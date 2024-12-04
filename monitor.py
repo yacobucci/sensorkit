@@ -31,7 +31,9 @@
 import adafruit_tca9548a as mux
 import board
 
-from modules.devices import *
+from modules import devices
+from modules import controls
+from modules import meters
 
 def main():
     # arg parsing
@@ -40,31 +42,23 @@ def main():
     bus_devices = i2c.scan()
     print(bus_devices)
 
-    chains = None
-
     if len(bus_devices) == 1:
         addr = bus_devices[0]
 
-        d = devices[addr]
-        if d['type'] == CONTROL and d['subtype'] == MUX:
+        d = devices.device_types[addr]
+        if d['type'] == devices.CONTROL and d['subtype'] == devices.MUX:
             print('single device is a multiplexer')
-        else:
-            try:
-                _ = devices[addr]
-            except KeyError as _:
-                print('single device unsupported: {}'.format(hex(addr)))
-        #XXX make this the mux control
-        chains = [i2c]
+
+            mux = controls.mux_factory.get_mux(d['id'], i2c)
+            print('channels: {}'.format(len(mux)))
+
+            for c in mux.channels():
+                c.try_lock()
+                addresses = c.scan()
+                print([hex(address) for address in addresses])
+                c.unlock()
     else:
         print('single bus chain')
-        chains = [i2c]
-
-    for channel in range(len(chains)):
-        if chains[channel].try_lock():
-            print('channel {}:'.format(channel), end='')
-            addresses = chains[channel].scan()
-            print([hex(address) for address in addresses])
-            chains[channel].unlock()
 
 if __name__ == '__main__':
     main()

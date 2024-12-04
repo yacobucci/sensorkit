@@ -19,7 +19,9 @@ ALTITUDE    = 0x04
 
 # Breakout boards
 PCA9546A = 0x01
-BMP390   = 0x02
+PCA9548A = 0x02
+TCA9548A = PCA9548A
+BMP390   = 0x03
 
 pca9546a = {
     'address': 0x70,
@@ -39,7 +41,7 @@ bmp390 = {
     'subtype': METER
 }
 
-devices = dict([
+device_types = dict([
     (0x70, pca9546a),
     (0x77, bmp390)
 ])
