@@ -28,9 +28,6 @@ class MeterInterface(devices.DeviceInterface):
     def measure(self):
         pass
 
-    def board(self) -> int:
-        pass
-
     def measurement(self) -> int:
         pass
 

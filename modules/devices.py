@@ -75,3 +75,6 @@ device_types = dict([
 class DeviceInterface:
     def address(self) -> int:
         pass
+
+    def board(self) -> int:
+        pass

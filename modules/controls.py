@@ -32,6 +32,9 @@ class PCA9546A(MuxInterface):
     def address(self) -> int:
         return self._mux.address
 
+    def board(self) -> int:
+        return devices.PCA9546A
+
     def channels(self):
         for c in range(len(self._mux)):
             yield self._mux[c]
