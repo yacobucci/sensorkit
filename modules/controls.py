@@ -11,20 +11,26 @@ import adafruit_tca9548a
 
 from . import devices
 
-class MuxInterface:
+class MuxInterface(devices.DeviceInterface):
+    def address(self) -> int:
+        pass
+
     def channels(self):
         pass
 
     def __len__(self):
         pass
 
-class PCA9546A:
+class PCA9546A(MuxInterface):
     def __init__(self, i2c: I2C):
         self._mux = adafruit_tca9548a.PCA9546A(i2c)
         pass
 
     def __len__(self) -> Literal[4]:
         return len(self._mux)
+
+    def address(self) -> int:
+        return self._mux.address
 
     def channels(self):
         for c in range(len(self._mux)):

@@ -28,7 +28,6 @@
 #print(sht.measurements)
 #print('{} {} {}'.format(bmp.pressure, bmp.altitude, bmp.temperature))
 
-import adafruit_tca9548a as mux
 import board
 
 from modules import devices
@@ -53,10 +52,44 @@ def main():
             print('channels: {}'.format(len(mux)))
 
             for c in mux.channels():
-                c.try_lock()
-                addresses = c.scan()
-                print([hex(address) for address in addresses])
-                c.unlock()
+                if c.try_lock():
+                    addresses = c.scan()
+                    # XXX debug log
+                    #print('unlocking channel {}'.format(c.channel_switch))
+                    c.unlock()
+                    print([hex(address) for address in addresses])
+
+                    for a in addresses:
+                        if a == mux.address():
+                            continue
+
+                        dev = devices.device_types[a]
+                        print(dev)
+
+                        for cap in dev['capabilities']:
+                            try:
+                                m = meters.meter_factory.get_meter(dev['id'], cap, c)
+                                b = m.board()
+                                metric = m.measurement()
+                                bus_id = m.bus_id()
+
+                                if metric == devices.ALTITUDE:
+                                    # XXX just for testing
+                                    import json
+                                    import urllib.request
+                                    location = 'https://api.open-meteo.com/v1/forecast?latitude=39.7592537&longitude=-105.1230315&current=pressure_msl'
+                                    contents = urllib.request.urlopen(location)
+                                    if contents.status == 200:
+                                        data = contents.read()
+                                        obj = json.loads(data)
+                                        msl = obj['current']['pressure_msl']
+                                        m.set_sea_level_pressure(msl)
+
+                                value = m.measure()
+
+                                print('Board {} Measurement {} Value {} on Bus {}'.format(b, metric, value, bus_id))
+                            except ValueError as e:
+                                print(e)
     else:
         print('single bus chain')
 
