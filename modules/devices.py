@@ -1,24 +1,24 @@
 NONE = 0x00
 
 # Device Types
-SENSOR  = 0x01
-CONTROL = 0x02
+SENSOR  = 0x00000001
+CONTROL = 0x00000002
 
 # SubTypes
-MUX   = 0x01
-METER = 0x02
+MUX   = 0x00010000
+METER = 0x00020000
 
 # Multiplexer capacities
 FOUR_CHANNEL  = 0x01
 EIGHT_CHANNEL = 0x02
 
 # Meters
-PRESSURE          = 0x0001
-TEMPERATURE       = 0x0002
-ALTITUDE          = 0x0004
-RELATIVE_HUMIDITY = 0x0008
-AMBIENT_LIGHT     = 0x0010
-LUX               = 0x0020
+PRESSURE          = 0x00000001
+TEMPERATURE       = 0x00000002
+ALTITUDE          = 0x00000004
+RELATIVE_HUMIDITY = 0x00000008
+AMBIENT_LIGHT     = 0x00000010
+LUX               = 0x00000020
 
 # Breakout boards
 PCA9546A = 0x01
@@ -28,6 +28,7 @@ BMP390   = 0x03
 SHT41    = 0x04
 VEML7700 = 0x05
 
+# Device profiles
 # XXX can capabilities be AND and OR at some point?
 pca9546a = {
     'address': 0x70,
