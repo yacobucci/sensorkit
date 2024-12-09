@@ -1,6 +1,6 @@
 - make a routes module
-  - routes register full metrics endpoint
   - individual measurement endpoints based on discovered meters
+  - API endpoints based on discovered meters
 
 - make route Response configurable
   - prometheus

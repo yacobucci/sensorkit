@@ -21,6 +21,15 @@ RELATIVE_HUMIDITY = 0x0008
 AMBIENT_LIGHT     = 0x0010
 LUX               = 0x0020
 
+measurements = dict([
+    (PRESSURE, 'pressure'),
+    (TEMPERATURE, 'temperature'),
+    (ALTITUDE, 'altitude'),
+    (RELATIVE_HUMIDITY, 'relative_humidity'),
+    (AMBIENT_LIGHT, 'ambient_light'),
+    (LUX, 'lux')
+])
+
 # Breakout boards
 PCA9546A = 0x0001
 PCA9548A = 0x0002
@@ -94,8 +103,17 @@ device_types = dict([
 ])
 
 class DeviceInterface:
-    def address(self) -> int:
-        pass
+    def __init__(self, profile: DeviceProfile):
+        self._device_profile = profile
 
+    @property
+    def address(self) -> int:
+        return hex(self._device_profile.address)
+
+    @property
     def board(self) -> int:
-        pass
+        return self._device_profile.device_id
+
+    @property
+    def name(self) -> str:
+        return self._device_profile.name

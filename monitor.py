@@ -19,7 +19,7 @@ import uvicorn
 from modules import controls
 from modules import devices
 from modules import meters
-from modules import prometheus
+from modules import metrics
 
 logger = logging.getLogger(__name__)
 
@@ -36,6 +36,8 @@ def set_log_level(level: str, logger: logging.Logger):
         logger.setLevel(logging.CRITICAL)
     else:
         raise ValueError(level)
+
+scheduler = BackgroundScheduler()
 
 location = 'https://api.open-meteo.com/v1/forecast?'
 params = {
@@ -66,7 +68,7 @@ def create_meters(i2c: I2C, ignore_addr_set: set) -> list[meters.MeterInterface]
 
             for cap in dev.capabilities_gen():
                 try:
-                    m = meters.meter_factory.get_meter(dev.device_id, cap, i2c)
+                    m = meters.meter_factory.get_meter(dev.device_id, cap, dev, i2c)
                     objects.append(m)
                 except ValueError as e:
                     logger.warning('name %s, board %s, capability %s - no associated ctor',
@@ -87,7 +89,7 @@ def setup_bus_devices() -> list[meters.MeterInterface]:
         d = devices.device_types[addr]
         if d.is_mux():
             logger.info('multiplexer %s found at addr %s, setting up multiple channels',
-                            d.name, hex(addr))
+                        d.name, hex(addr))
 
             mux = controls.mux_factory.get_mux(d.device_id, i2c)
             logger.info('multiplexer supported channels: %s', len(mux))
@@ -110,12 +112,27 @@ def setup_bus_devices() -> list[meters.MeterInterface]:
 def open_meteo_handler(state: State, contents) -> None:
     logger.debug('open_meteo_handler called with status %s', contents.status)
 
-    # XXX do error handling
-    if contents.status == 200:
-        data = contents.read()
-        obj = json.loads(data)
-        msl = obj['current']['pressure_msl']
-        logger.debug('open_meteo_handler: mean sea level pressure %s', msl)
+    if contents.status != 200:
+        logger.warning('open_meteo_handler failed GET, using pre-set MSL')
+        return
+
+    data = contents.read()
+    obj = json.loads(data)
+    msl = obj['current']['pressure_msl']
+    logger.debug('open_meteo_handler: acquired mean sea level pressure %s', msl)
+
+    set_state = False
+    original_msl = None
+    try:
+        _ = state.msl
+        if msl != state.msl:
+            original_msl = state.msl
+            set_state = True
+    except:
+        set_state = True
+    finally:
+        logger.info('open_meteo_handler: updating mean sea level pressure from %s to %s',
+                    original_msl, msl)
         state.msl = msl
 
 def url_get(state: State, url: str, params: dict, handler: callable) -> None:
@@ -161,14 +178,7 @@ def main():
 
     set_log_level(args.log_level, logger)
 
-    all_meters = setup_bus_devices()
-    logger.debug('all devices available: %s', all_meters)
-
     app = Starlette(debug=True)
-    if args.prometheus is True:
-        app.add_route('/metrics', prometheus.metrics)
-    app.state.meters = all_meters
-
 
     if args.mean_sea_level_pressure:
         logger.debug('getting mean sea level pressure for startup')
@@ -177,7 +187,6 @@ def main():
         logger.debug('setting mean sea level pressure into app: %s', app.state.msl)
 
         logger.debug('starting background scheduler')
-        scheduler = BackgroundScheduler()
         # XXX make interval configurable
         # XXX make scheduler global and only add job here?
         scheduler.add_job(url_get, "interval", minutes = 60, kwargs = {
@@ -186,7 +195,16 @@ def main():
             'params': params,
             'handler': open_meteo_handler
         }) 
-        scheduler.start()
+
+    all_meters = setup_bus_devices()
+    logger.debug('all devices available: %s', all_meters)
+
+    if args.prometheus is True:
+        exporter = metrics.metrics_factory.get_exporter('prometheus')
+        app.add_route('/metrics', exporter.export)
+    app.state.meters = all_meters
+
+    scheduler.start()
 
     config = uvicorn.Config(app, host='0.0.0.0', port=8000, log_level=args.log_level)
     server = uvicorn.Server(config)

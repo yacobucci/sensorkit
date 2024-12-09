@@ -13,7 +13,8 @@ import adafruit_veml7700
 from . import devices
 
 class MeterInterface(devices.DeviceInterface):
-    def __init__(self, i2c: I2C):
+    def __init__(self, profile: devices.DeviceProfile, i2c: I2C):
+        super().__init__(profile)
         self._i2c_bus = i2c
 
     @property
@@ -26,25 +27,24 @@ class MeterInterface(devices.DeviceInterface):
                 r = r + 1
         return r
 
-    def measure(self):
+    def measure(self) -> float:
         pass
 
     def measurement(self) -> int:
         pass
 
+    def unit(self) -> str:
+        pass
+
 #
 # BMP390 based measurements
 class Bmp390(MeterInterface):
-    def __init__(self, i2c: I2C):
-        super().__init__(i2c)
-
-    @property
-    def board(self) -> int:
-        return devices.BMP390
+    def __init__(self, profile: devices.DeviceProfile, i2c: I2C):
+        super().__init__(profile, i2c)
 
 class Bmp390Temperature(Bmp390):
-    def __init__(self, i2c: I2C):
-        super().__init__(i2c)
+    def __init__(self, profile: devices.DeviceProfile, i2c: I2C):
+        super().__init__(profile, i2c)
         self._bmp = adafruit_bmp3xx.BMP3XX_I2C(i2c)
 
     @property
@@ -55,9 +55,13 @@ class Bmp390Temperature(Bmp390):
     def measurement(self) -> int:
         return devices.TEMPERATURE
 
+    @property
+    def units(self) -> str:
+        return 'Celsius (C)'
+
 class Bmp390Pressure(Bmp390):
-    def __init__(self, i2c: I2C):
-        super().__init__(i2c)
+    def __init__(self, profile: devices.DeviceProfile, i2c: I2C):
+        super().__init__(profile, i2c)
         self._bmp = adafruit_bmp3xx.BMP3XX_I2C(i2c)
 
     @property
@@ -68,9 +72,13 @@ class Bmp390Pressure(Bmp390):
     def measurement(self) -> int:
         return devices.PRESSURE
 
+    @property
+    def units(self) -> str:
+        return 'Hectopascal (hPa)'
+
 class Bmp390Altitude(Bmp390):
-    def __init__(self, i2c: I2C):
-        super().__init__(i2c)
+    def __init__(self, profile: devices.DeviceProfile, i2c: I2C):
+        super().__init__(profile, i2c)
         self._bmp = adafruit_bmp3xx.BMP3XX_I2C(i2c)
 
     @property
@@ -80,6 +88,10 @@ class Bmp390Altitude(Bmp390):
     @property
     def measurement(self) -> int:
         return devices.ALTITUDE
+
+    @property
+    def units(self) -> str:
+        return 'Meter (M)'
 
     @property
     def sea_level_pressure(self):
@@ -93,16 +105,12 @@ class Bmp390Altitude(Bmp390):
 #
 # SHT41 (SHT4x) measurements
 class Sht41(MeterInterface):
-    def __init__(self, i2c: I2C):
-        super().__init__(i2c)
-
-    @property
-    def board(self) -> int:
-        return devices.SHT41
+    def __init__(self, profile: devices.DeviceProfile, i2c: I2C):
+        super().__init__(profile, i2c)
 
 class Sht41Temperature(Sht41):
-    def __init__(self, i2c: I2C):
-        super().__init__(i2c)
+    def __init__(self, profile: devices.DeviceProfile, i2c: I2C):
+        super().__init__(profile, i2c)
         self._sht = adafruit_sht4x.SHT4x(i2c)
 
     @property
@@ -114,9 +122,13 @@ class Sht41Temperature(Sht41):
     def measurement(self) -> int:
         return devices.TEMPERATURE
 
+    @property
+    def units(self) -> str:
+        return 'Celsius (C)'
+
 class Sht41RelativeHumidity(Sht41):
-    def __init__(self, i2c: I2C):
-        super().__init__(i2c)
+    def __init__(self, profile: devices.DeviceProfile, i2c: I2C):
+        super().__init__(profile, i2c)
         self._sht = adafruit_sht4x.SHT4x(i2c)
 
     @property
@@ -127,21 +139,21 @@ class Sht41RelativeHumidity(Sht41):
     @property
     def measurement(self) -> int:
         return devices.RELATIVE_HUMIDITY
+
+    @property
+    def units(self) -> str:
+        return 'Percent Relative Humidity (% rH)'
 # END SHT41 (SHT4x)
 
 #
 # VEML7700 measurements
 class Veml7700(MeterInterface):
-    def __init__(self, i2c: I2C):
-        super().__init__(i2c)
-
-    @property
-    def board(self) -> int:
-        return devices.VEML7700
+    def __init__(self, profile: devices.DeviceProfile, i2c: I2C):
+        super().__init__(profile, i2c)
 
 class Veml7700AmbientLight(Veml7700):
-    def __init__(self, i2c: I2C):
-        super().__init__(i2c)
+    def __init__(self, profile: devices.DeviceProfile, i2c: I2C):
+        super().__init__(profile, i2c)
         self._veml7700 = adafruit_veml7700.VEML7700(i2c)
 
     @property
@@ -153,9 +165,13 @@ class Veml7700AmbientLight(Veml7700):
     def measurement(self) -> int:
         return devices.AMBIENT_LIGHT
 
+    @property
+    def units(self) -> str:
+        return 'Ambient Light Data'
+
 class Veml7700Lux(Veml7700):
-    def __init__(self, i2c: I2C):
-        super().__init__(i2c)
+    def __init__(self, profile: devices.DeviceProfile, i2c: I2C):
+        super().__init__(profile, i2c)
         self._veml7700 = adafruit_veml7700.VEML7700(i2c)
 
     @property
@@ -166,6 +182,10 @@ class Veml7700Lux(Veml7700):
     @property
     def measurement(self) -> int:
         return devices.LUX
+
+    @property
+    def units(self) -> str:
+        return 'Lux (Lx)'
 # END VEML7700
 
 class MeterFactory:
@@ -180,13 +200,14 @@ class MeterFactory:
             self._boards[board] = dict()
             self._boards[board][measurement] = ctor
 
-    def get_meter(self, board, measurement: int, i2c: I2C) -> MeterInterface:
+    def get_meter(self, board: int, measurement: int,
+                  profile: devices.DeviceProfile, i2c: I2C) -> MeterInterface:
         dev_board = self._boards.get(board)
         ctor = dev_board.get(measurement)
         if not ctor:
             raise ValueError('{}:{}'.format(board, measurement))
 
-        return ctor(i2c)
+        return ctor(profile, i2c)
 
 meter_factory = MeterFactory()
 meter_factory.register_method(devices.BMP390, devices.TEMPERATURE, Bmp390Temperature)
