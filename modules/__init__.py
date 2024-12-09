@@ -1,5 +1,6 @@
-__all__ = [ 'devices', 'controls', 'meters' ]
+__all__ = [ 'controls', 'devices', 'meters', 'prometheus' ]
 
-from . import devices
 from . import controls
+from . import devices
 from . import meters
+from . import prometheus

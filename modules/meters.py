@@ -16,6 +16,7 @@ class MeterInterface(devices.DeviceInterface):
     def __init__(self, i2c: I2C):
         self._i2c_bus = i2c
 
+    @property
     def bus_id(self) -> int:
         r = 0
         if 'channel_switch' in self._i2c_bus.__dict__:
@@ -37,6 +38,7 @@ class Bmp390(MeterInterface):
     def __init__(self, i2c: I2C):
         super().__init__(i2c)
 
+    @property
     def board(self) -> int:
         return devices.BMP390
 
@@ -45,9 +47,11 @@ class Bmp390Temperature(Bmp390):
         super().__init__(i2c)
         self._bmp = adafruit_bmp3xx.BMP3XX_I2C(i2c)
 
+    @property
     def measure(self) -> float:
         return self._bmp.temperature
 
+    @property
     def measurement(self) -> int:
         return devices.TEMPERATURE
 
@@ -56,9 +60,11 @@ class Bmp390Pressure(Bmp390):
         super().__init__(i2c)
         self._bmp = adafruit_bmp3xx.BMP3XX_I2C(i2c)
 
+    @property
     def measure(self) -> float:
         return self._bmp.pressure
 
+    @property
     def measurement(self) -> int:
         return devices.PRESSURE
 
@@ -67,13 +73,20 @@ class Bmp390Altitude(Bmp390):
         super().__init__(i2c)
         self._bmp = adafruit_bmp3xx.BMP3XX_I2C(i2c)
 
+    @property
     def measure(self) -> float:
         return self._bmp.altitude
 
+    @property
     def measurement(self) -> int:
         return devices.ALTITUDE
 
-    def set_sea_level_pressure(self, msl: float):
+    @property
+    def sea_level_pressure(self):
+        return self._bmp.sea_level_pressure
+
+    @sea_level_pressure.setter
+    def sea_level_pressure(self, msl: float):
         self._bmp.sea_level_pressure = msl
 # END BMP390
 
@@ -83,6 +96,7 @@ class Sht41(MeterInterface):
     def __init__(self, i2c: I2C):
         super().__init__(i2c)
 
+    @property
     def board(self) -> int:
         return devices.SHT41
 
@@ -91,10 +105,12 @@ class Sht41Temperature(Sht41):
         super().__init__(i2c)
         self._sht = adafruit_sht4x.SHT4x(i2c)
 
+    @property
     def measure(self) -> float:
         temp, _ =  self._sht.measurements
         return temp
 
+    @property
     def measurement(self) -> int:
         return devices.TEMPERATURE
 
@@ -103,10 +119,12 @@ class Sht41RelativeHumidity(Sht41):
         super().__init__(i2c)
         self._sht = adafruit_sht4x.SHT4x(i2c)
 
+    @property
     def measure(self) -> float:
         _, rh = self._sht.measurements
         return rh
 
+    @property
     def measurement(self) -> int:
         return devices.RELATIVE_HUMIDITY
 # END SHT41 (SHT4x)
@@ -117,6 +135,7 @@ class Veml7700(MeterInterface):
     def __init__(self, i2c: I2C):
         super().__init__(i2c)
 
+    @property
     def board(self) -> int:
         return devices.VEML7700
 
@@ -125,10 +144,12 @@ class Veml7700AmbientLight(Veml7700):
         super().__init__(i2c)
         self._veml7700 = adafruit_veml7700.VEML7700(i2c)
 
+    @property
     def measure(self) -> float:
         l = self._veml7700.light
         return l
 
+    @property
     def measurement(self) -> int:
         return devices.AMBIENT_LIGHT
 
@@ -137,10 +158,12 @@ class Veml7700Lux(Veml7700):
         super().__init__(i2c)
         self._veml7700 = adafruit_veml7700.VEML7700(i2c)
 
+    @property
     def measure(self) -> float:
         l = self._veml7700.lux
         return l
 
+    @property
     def measurement(self) -> int:
         return devices.LUX
 # END VEML7700

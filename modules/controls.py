@@ -29,9 +29,11 @@ class PCA9546A(MuxInterface):
     def __len__(self) -> Literal[4]:
         return len(self._mux)
 
+    @property
     def address(self) -> int:
         return self._mux.address
 
+    @property
     def board(self) -> int:
         return devices.PCA9546A
 
