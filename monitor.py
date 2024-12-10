@@ -11,12 +11,12 @@ import urllib.request
 import board
 from busio import I2C
 from starlette.applications import Starlette
-from starlette.datastructures import State
 from starlette.responses import JSONResponse
 from starlette.routing import Route
 import uvicorn
 
 from modules import controls
+from modules import datastructures
 from modules import devices
 from modules import meters
 from modules import metrics
@@ -38,6 +38,7 @@ def set_log_level(level: str, logger: logging.Logger):
         raise ValueError(level)
 
 scheduler = BackgroundScheduler()
+state = None
 
 location = 'https://api.open-meteo.com/v1/forecast?'
 params = {
@@ -46,7 +47,8 @@ params = {
     'current': 'pressure_msl'
 }
 
-def create_meters(i2c: I2C, ignore_addr_set: set) -> list[meters.MeterInterface]:
+def create_meters(i2c: I2C, state: datastructures.State,
+                  ignore_addr_set: set) -> list[meters.MeterInterface]:
     objects = []
     if i2c.try_lock():
         addresses = i2c.scan()
@@ -68,14 +70,14 @@ def create_meters(i2c: I2C, ignore_addr_set: set) -> list[meters.MeterInterface]
 
             for cap in dev.capabilities_gen():
                 try:
-                    m = meters.meter_factory.get_meter(dev.device_id, cap, dev, i2c)
+                    m = meters.meter_factory.get_meter(dev.device_id, cap, dev, i2c, state)
                     objects.append(m)
                 except ValueError as e:
                     logger.warning('name %s, board %s, capability %s - no associated ctor',
                                        dev.name, dev.device_id, cap)
     return objects
 
-def setup_bus_devices() -> list[meters.MeterInterface]:
+def setup_bus_devices(state: datastructures.StateInterface) -> list[meters.MeterInterface]:
     all_meters = []
     i2c = board.I2C()
 
@@ -96,20 +98,20 @@ def setup_bus_devices() -> list[meters.MeterInterface]:
 
             for virtual_i2c in mux.channels():
                 ignore_addr_set = set([ mux.address ])
-                objects = create_meters(virtual_i2c, ignore_addr_set)
+                objects = create_meters(virtual_i2c, state, ignore_addr_set)
                 logger.info('meters %s', meters)
                 all_meters.extend(objects)
         else:
             logger.info('single device on bus, setting up meters')
-            all_meters = create_meters(virtual_i2c, {})
+            all_meters = create_meters(virtual_i2c, state, {})
     else:
         logger.info('multiple devices on bus, setting up meters')
-        all_meters = create_meters(virtual_i2c, {})
+        all_meters = create_meters(virtual_i2c, state, {})
 
     return all_meters
 
 # XXX add typing information to contents argument
-def open_meteo_handler(state: State, contents) -> None:
+def open_meteo_handler(state: datastructures.StateInterface, contents) -> None:
     logger.debug('open_meteo_handler called with status %s', contents.status)
 
     if contents.status != 200:
@@ -124,18 +126,23 @@ def open_meteo_handler(state: State, contents) -> None:
     set_state = False
     original_msl = None
     try:
-        _ = state.msl
-        if msl != state.msl:
-            original_msl = state.msl
+        original_msl = state.msl
+        if msl != original_msl:
+            logger.debug('open_meteo_handler: mean sea level pressure changed')
             set_state = True
     except:
         set_state = True
     finally:
-        logger.info('open_meteo_handler: updating mean sea level pressure from %s to %s',
-                    original_msl, msl)
-        state.msl = msl
+        if set_state is True:
+            logger.info('open_meteo_handler: updating mean sea level pressure from %s to %s',
+                        original_msl, msl)
+            state.msl = msl
+        else:
+            logger.debug('open_meteo_handler: no change in mean sea level pressure (%s, %s)',
+                         original_msl, msl)
 
-def url_get(state: State, url: str, params: dict, handler: callable) -> None:
+def url_get(state: datastructures.StateInterface, url: str, params: dict,
+            handler: callable) -> None:
     endpoint = url + urllib.parse.urlencode(params)
 
     logger.debug('calling api endpoint %s', endpoint)
@@ -179,30 +186,31 @@ def main():
     set_log_level(args.log_level, logger)
 
     app = Starlette(debug=True)
+    state = datastructures.StarletteState(app.state)
+
+    all_meters = setup_bus_devices(state)
+    logger.debug('all devices available: %s', all_meters)
 
     if args.mean_sea_level_pressure:
         logger.debug('getting mean sea level pressure for startup')
-        url_get(app.state, location, params, open_meteo_handler)
+        url_get(state, location, params, open_meteo_handler)
 
-        logger.debug('setting mean sea level pressure into app: %s', app.state.msl)
+        logger.debug('setting mean sea level pressure into app: %s', state.msl)
 
         logger.debug('starting background scheduler')
         # XXX make interval configurable
         # XXX make scheduler global and only add job here?
         scheduler.add_job(url_get, "interval", minutes = 60, kwargs = {
-            'state': app.state,
+            'state': state,
             'url': location,
             'params': params,
             'handler': open_meteo_handler
         }) 
 
-    all_meters = setup_bus_devices()
-    logger.debug('all devices available: %s', all_meters)
-
     if args.prometheus is True:
         exporter = metrics.metrics_factory.get_exporter('prometheus')
         app.add_route('/metrics', exporter.export)
-    app.state.meters = all_meters
+    state.meters = all_meters
 
     scheduler.start()
 
