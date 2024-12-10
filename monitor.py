@@ -186,7 +186,7 @@ def main():
     set_log_level(args.log_level, logger)
 
     app = Starlette(debug=True)
-    state = datastructures.StarletteState(app.state)
+    state = datastructures.State(app.state)
 
     all_meters = setup_bus_devices(state)
     logger.debug('all devices available: %s', all_meters)
@@ -200,7 +200,7 @@ def main():
         logger.debug('starting background scheduler')
         # XXX make interval configurable
         # XXX make scheduler global and only add job here?
-        scheduler.add_job(url_get, "interval", minutes = 60, kwargs = {
+        scheduler.add_job(url_get, "interval", minutes = 10, kwargs = {
             'state': state,
             'url': location,
             'params': params,
