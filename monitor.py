@@ -15,11 +15,11 @@ from starlette.responses import JSONResponse
 from starlette.routing import Route
 import uvicorn
 
-from modules import controls
-from modules import datastructures
-from modules import devices
-from modules import meters
-from modules import metrics
+from sensorkit import controls
+from sensorkit import datastructures
+from sensorkit import devices
+from sensorkit import meters
+from api import metrics
 
 logger = logging.getLogger(__name__)
 

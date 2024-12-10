@@ -3,7 +3,7 @@ import logging
 from prometheus_client import Counter, Gauge, generate_latest
 from starlette.responses import Response
 
-from . import devices
+from sensorkit import devices
 
 logger = logging.getLogger(__name__)
 
