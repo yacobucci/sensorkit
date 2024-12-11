@@ -89,7 +89,7 @@ class Bmp390Altitude(Bmp390):
         super().__init__(profile, i2c, state)
         self._bmp = adafruit_bmp3xx.BMP3XX_I2C(i2c)
         self._default = self._bmp.sea_level_pressure
-        self._key = 'msl'
+        self._key = 'altimeter_calibration'
 
         self._state.add_key_listener(self._key, self.state_callback)
 
@@ -114,7 +114,7 @@ class Bmp390Altitude(Bmp390):
         self._bmp.sea_level_pressure = msl
 
     def state_callback(self, key: str, value: typing.Any) -> None:
-        if key != 'msl':
+        if key != 'altimeter_calibration':
             return
 
         if value != self._bmp.sea_level_pressure:

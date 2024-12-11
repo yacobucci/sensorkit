@@ -2,11 +2,8 @@ from apscheduler.schedulers.background import BackgroundScheduler
 import argparse
 import asyncio
 from contextlib import asynccontextmanager
-import json
 import logging
 import sys
-import urllib.parse
-import urllib.request
 
 import board
 from busio import I2C
@@ -15,11 +12,13 @@ from starlette.responses import JSONResponse
 from starlette.routing import Route
 import uvicorn
 
+from api import metrics
+from config import Config
 from sensorkit import controls
 from sensorkit import datastructures
 from sensorkit import devices
 from sensorkit import meters
-from api import metrics
+from tools.getters import url_get, OpenMeteoHandler
 
 logger = logging.getLogger(__name__)
 
@@ -110,80 +109,35 @@ def setup_bus_devices(state: datastructures.StateInterface) -> list[meters.Meter
 
     return all_meters
 
-# XXX add typing information to contents argument
-def open_meteo_handler(state: datastructures.StateInterface, contents) -> None:
-    logger.debug('open_meteo_handler called with status %s', contents.status)
-
-    if contents.status != 200:
-        logger.warning('open_meteo_handler failed GET, using pre-set MSL')
-        return
-
-    data = contents.read()
-    obj = json.loads(data)
-    msl = obj['current']['pressure_msl']
-    logger.debug('open_meteo_handler: acquired mean sea level pressure %s', msl)
-
-    set_state = False
-    original_msl = None
-    try:
-        original_msl = state.msl
-        if msl != original_msl:
-            logger.debug('open_meteo_handler: mean sea level pressure changed')
-            set_state = True
-    except:
-        set_state = True
-    finally:
-        if set_state is True:
-            logger.info('open_meteo_handler: updating mean sea level pressure from %s to %s',
-                        original_msl, msl)
-            state.msl = msl
-        else:
-            logger.debug('open_meteo_handler: no change in mean sea level pressure (%s, %s)',
-                         original_msl, msl)
-
-def url_get(state: datastructures.StateInterface, url: str, params: dict,
-            handler: callable) -> None:
-    endpoint = url + urllib.parse.urlencode(params)
-
-    logger.debug('calling api endpoint %s', endpoint)
-    contents = urllib.request.urlopen(endpoint)
-    handler(state, contents)
-
 def main():
     parser = argparse.ArgumentParser(description='monitor.py: I2C sensor monitor')
     parser.add_argument(
-        '--log',
-        help='Log file'
-    )
-    parser.add_argument(
-        '--log-level',
-        help='Log Level',
-        default='debug'
-    )
-    parser.add_argument(
-        '--prometheus',
-        help='Setup a prometheus metrics endpoint',
-        action=argparse.BooleanOptionalAction,
-        default=False
-    )
-    parser.add_argument(
-        '--mean-sea-level-pressure',
-        help='Get OpenMeteo Mean Sea Level Pressure - calibrates altimeters',
-        action=argparse.BooleanOptionalAction,
-        default=False
+        '--config-file',
+        help='Global configuration file',
+        default='${HOME}/.config/sensorkit-monitor/config.yaml'
     )
     args = parser.parse_args()
 
-    if args.log is not None and len(args.log) > 0:
-        logging.basicConfig(filename=args.log, encoding='utf-8',
-                            format='%(levelname)s %(asctime)s : %(message)s')
-    else:
+    config = Config(args.config_file)
+
+    try:
+        # XXX i know this is a file, but disambiguate to stream eventually
+        #    h = logging.StreamHandler(sys.stdout)
+        #    f = logging.Formatter('%(levelname)s %(asctime)s : %(message)s')
+        #    h.setFormatter(f)
+        #    logger.addHandler(h)
+        dest = config.log_destination
+        level = config.log_level
+        fmt = config.log_format
+
+        logging.basicConfig(filename=dest, encoding='utf-8', format=fmt)
+        set_log_level(level, logger)
+    except AttributeError as e:
+        print(sys.stderr, 'disabling custom logging, using defaults')
         h = logging.StreamHandler(sys.stdout)
         f = logging.Formatter('%(levelname)s %(asctime)s : %(message)s')
         h.setFormatter(f)
         logger.addHandler(h)
-
-    set_log_level(args.log_level, logger)
 
     app = Starlette(debug=True)
     state = datastructures.State(app.state)
@@ -191,30 +145,46 @@ def main():
     all_meters = setup_bus_devices(state)
     logger.debug('all devices available: %s', all_meters)
 
-    if args.mean_sea_level_pressure:
-        logger.debug('getting mean sea level pressure for startup')
-        url_get(state, location, params, open_meteo_handler)
+    try:
+        #XXX parse units, so to not assume minutes
+        interval = config.altimeter_calibration_interval
+        #units = config.altimeter_calibration_interval_units
 
-        logger.debug('setting mean sea level pressure into app: %s', state.msl)
+        logger.debug('getting mean sea level pressure for altimeter calibration')
 
-        logger.debug('starting background scheduler')
-        # XXX make interval configurable
-        # XXX make scheduler global and only add job here?
-        scheduler.add_job(url_get, "interval", minutes = 10, kwargs = {
+        handler = OpenMeteoHandler()
+        url_get(state, location, params, handler.handle_response)
+        logger.debug('calibration pressure stored: %s', state.altimeter_calibration)
+
+        logger.debug('adding calibration job to scheduler')
+
+        #XXX make objects so can configure with data from config
+        scheduler.add_job(url_get, 'interval', minutes=interval, kwargs = {
             'state': state,
             'url': location,
             'params': params,
-            'handler': open_meteo_handler
-        }) 
+            'handler': handler.handle_response
+        })
+    except AttributeError as e:
+        logger.info('disabling altimeter calibration - %s', e)
 
-    if args.prometheus is True:
-        exporter = metrics.metrics_factory.get_exporter('prometheus')
-        app.add_route('/metrics', exporter.export)
+    try:
+        encoding = config.metrics_encoding
+        labels = config.metrics_labels
+        endpoint = config.metrics_endpoint
+
+        exporter = metrics.metrics_factory.get_exporter(encoding)
+        app.add_route(endpoint, exporter.export)
+    except AttributeError as e:
+        logger.info('disabling metrics exporting - %s', e)
+
     state.meters = all_meters
 
     scheduler.start()
 
-    config = uvicorn.Config(app, host='0.0.0.0', port=8000, log_level=args.log_level)
+    host = config.host
+    port = config.port
+    config = uvicorn.Config(app, host=host, port=port, log_level='debug')
     server = uvicorn.Server(config)
     server.run()
 
