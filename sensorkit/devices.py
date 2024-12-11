@@ -20,6 +20,7 @@ ALTITUDE          = 0x0004
 RELATIVE_HUMIDITY = 0x0008
 AMBIENT_LIGHT     = 0x0010
 LUX               = 0x0020
+CO2               = 0x0040
 
 measurements = dict([
     (PRESSURE, 'pressure'),
@@ -27,7 +28,8 @@ measurements = dict([
     (ALTITUDE, 'altitude'),
     (RELATIVE_HUMIDITY, 'relative_humidity'),
     (AMBIENT_LIGHT, 'ambient_light'),
-    (LUX, 'lux')
+    (LUX, 'lux'),
+    (CO2, 'CO2')
 ])
 
 # Breakout boards
@@ -37,6 +39,7 @@ TCA9548A = PCA9548A
 BMP390   = 0x0003
 SHT41    = 0x0004
 VEML7700 = 0x0005
+SCD41    = 0x0006
 
 # Device profiles
 # XXX can capabilities be AND and OR at some point?
@@ -91,15 +94,17 @@ class DeviceProfile:
         return True if cap in self._caps else False
 
 pca9546a = DeviceProfile('PCA9546A', 0x70, PCA9546A, [ FOUR_CHANNEL ], CONTROL, MUX)
-bmp390 = DeviceProfile('BMP390', 0x77, BMP390, [ PRESSURE, TEMPERATURE, ALTITUDE ], CONTROL, MUX)
-sht41 = DeviceProfile('SHT41', 0x44, SHT41, [ TEMPERATURE, RELATIVE_HUMIDITY ], CONTROL, MUX)
-veml7700 = DeviceProfile('VEML7700', 0x10, VEML7700, [ AMBIENT_LIGHT, LUX ], CONTROL, MUX)
+bmp390 = DeviceProfile('BMP390', 0x77, BMP390, [ PRESSURE, TEMPERATURE, ALTITUDE ], SENSOR, METER)
+sht41 = DeviceProfile('SHT41', 0x44, SHT41, [ TEMPERATURE, RELATIVE_HUMIDITY ], SENSOR, METER)
+veml7700 = DeviceProfile('VEML7700', 0x10, VEML7700, [ AMBIENT_LIGHT, LUX ], SENSOR, METER)
+scd41 = DeviceProfile('SCD41', 0x62, SCD41, [ CO2, RELATIVE_HUMIDITY, TEMPERATURE ], SENSOR, METER)
 
 device_types = dict([
     (0x70, pca9546a),
     (0x77, bmp390),
     (0x44, sht41),
-    (0x10, veml7700)
+    (0x10, veml7700),
+    (0x62, scd41)
 ])
 
 class DeviceInterface:
