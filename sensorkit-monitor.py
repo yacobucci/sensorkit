@@ -179,7 +179,7 @@ def main():
         labels = config.metrics_labels
         endpoint = config.metrics_endpoint
 
-        exporter = metrics.metrics_factory.get_exporter(encoding)
+        exporter = metrics.metrics_factory.get_exporter(encoding, labels)
         app.add_route(endpoint, exporter.export)
     except AttributeError as e:
         logger.info('disabling metrics exporting - %s', e)
