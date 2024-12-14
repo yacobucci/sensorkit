@@ -45,7 +45,7 @@ class MuxFactory:
     def __init__(self):
         self._ctors = {}
 
-    def register_method(self, board, ctor):
+    def register_mux(self, board, ctor):
         self._ctors[board] = ctor
 
     def get_mux(self, board, i2c: I2C) -> MuxInterface:
@@ -56,4 +56,4 @@ class MuxFactory:
         return ctor(i2c)
 
 mux_factory = MuxFactory()
-mux_factory.register_method(devices.PCA9546A, PCA9546A)
+mux_factory.register_mux(devices.PCA9546A, PCA9546A)
