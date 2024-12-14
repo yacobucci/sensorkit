@@ -18,24 +18,34 @@ class MetricsInterface:
         pass
 
 class PrometheusExporter(MetricsInterface):
-    def __init__(self):
+    def __init__(self, labels: dict[str, str] = {}):
         super().__init__()
+
+        self._labels = prometheus_labels + list(labels.keys())
+        self._config = labels
 
     async def export(self, request) -> Response:
         tree = request.app.state.tree
         for meter in tree.meters():
             if meter.measurement not in dynamic_gauges:
                 dimension = devices.to_capability_strings[meter.measurement]
-                dynamic_gauges[meter.measurement] = \
-                    Gauge(dimension,
+
+                g = Gauge(dimension,
                           'Sensor measurement - {}'.format(dimension),
-                          prometheus_labels)
+                          self._labels)
+                dynamic_gauges[meter.measurement] = g
+
             gauge = dynamic_gauges[meter.measurement]
-            gauge.labels(meter.name,
-                         meter.board,
-                         meter.bus_id,
-                         meter.address,
-                         meter.units).set(meter.measure)
+            d = dict()
+            d[prometheus_labels[0]] = meter.name
+            d[prometheus_labels[1]] = meter.board
+            d[prometheus_labels[2]] = meter.bus_id
+            d[prometheus_labels[3]] = meter.address
+            d[prometheus_labels[4]] = meter.units
+            for k in self._config:
+                d[k] = self._config[k]
+
+            gauge.labels(**d).set(meter.measure)
 
         response = Response(generate_latest(), media_type='text/plain; charset=utf-8')
         return response
@@ -47,12 +57,12 @@ class MetricsFactory:
     def register_method(self, encoding, ctor):
         self._ctors[encoding] = ctor
 
-    def get_exporter(self, encoding):
+    def get_exporter(self, encoding, labels: dict[str, str] = {}):
         ctor = self._ctors.get(encoding)
         if not ctor:
             raise ValueError(encoding)
 
-        return ctor()
+        return ctor(labels)
 
 metrics_factory = MetricsFactory()
 metrics_factory.register_method('prometheus', PrometheusExporter)
