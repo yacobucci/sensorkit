@@ -1,115 +1,19 @@
-NONE = 0x00
+import adafruit_bmp3xx
+import adafruit_scd4x
+import adafruit_sht4x
+import adafruit_veml7700
+from busio import I2C
 
-# Device Types
-SENSOR  = (0x0001 << 32)
-CONTROL = (0x0002 << 32)
-
-# SubTypes
-MUX      = 0x0001
-METER    = 0x0002
-DETECTOR = 0x0004
-
-# Multiplexer capacities
-FOUR_CHANNEL  = 0x01
-EIGHT_CHANNEL = 0x02
-
-# Meters
-PRESSURE          = 0x0001
-TEMPERATURE       = 0x0002
-ALTITUDE          = 0x0004
-RELATIVE_HUMIDITY = 0x0008
-AMBIENT_LIGHT     = 0x0010
-LUX               = 0x0020
-CO2               = 0x0040
-
-measurements = dict([
-    (PRESSURE, 'pressure'),
-    (TEMPERATURE, 'temperature'),
-    (ALTITUDE, 'altitude'),
-    (RELATIVE_HUMIDITY, 'relative_humidity'),
-    (AMBIENT_LIGHT, 'ambient_light'),
-    (LUX, 'lux'),
-    (CO2, 'CO2')
-])
-
-# Breakout boards
-PCA9546A = 0x0001
-PCA9548A = 0x0002
-TCA9548A = PCA9548A
-BMP390   = 0x0003
-SHT41    = 0x0004
-VEML7700 = 0x0005
-SCD41    = 0x0006
-
-# Device profiles
-# XXX can capabilities be AND and OR at some point?
-class DeviceProfile:
-    def __init__(self, name: str, address: int, device_id: int, capabilities: list[int],
-                 typ: int, subtype: int):
-        self._name = name
-        self._address = address
-        self._dev_id = device_id
-        self._caps = capabilities
-        self._type = typ
-        self._subtype = subtype
-
-    @property
-    def address(self) -> int:
-        return self._address
-
-    @property
-    def capabilities(self) -> list[int]:
-        return self._caps
-
-    def capabilities_gen(self) -> int:
-        for cap in self._caps:
-            yield cap
-
-    @property
-    def name(self) -> str:
-        return self._name
-
-    @property
-    def device_id(self) -> int:
-        return self._dev_id
-
-    @property
-    def typ(self) -> int:
-        return self._type
-
-    @property
-    def subtype(self) -> int:
-        return self._subtype
-
-    def is_mux(self) -> bool:
-        return True if self._type == CONTROL and self._subtype == MUX else False
-
-    def is_sensor(self) -> bool:
-        return True if self._type == SENSOR else False
-
-    def is_detector(self) -> bool:
-        return True if self._type == DETECTOR else False
-
-    def has_capability(self, cap: int) -> bool:
-        return True if cap in self._caps else False
-
-pca9546a = DeviceProfile('PCA9546A', 0x70, PCA9546A, [ FOUR_CHANNEL ], CONTROL, MUX)
-bmp390 = DeviceProfile('BMP390', 0x77, BMP390, [ PRESSURE, TEMPERATURE, ALTITUDE ], SENSOR, METER)
-sht41 = DeviceProfile('SHT41', 0x44, SHT41, [ TEMPERATURE, RELATIVE_HUMIDITY ], SENSOR, METER)
-veml7700 = DeviceProfile('VEML7700', 0x10, VEML7700, [ AMBIENT_LIGHT, LUX ], SENSOR, METER)
-scd41 = DeviceProfile('SCD41', 0x62, SCD41, [ CO2, RELATIVE_HUMIDITY, TEMPERATURE ], SENSOR, METER)
-
-device_types = dict([
-    (0x70, pca9546a),
-    (0x77, bmp390),
-    (0x44, sht41),
-    (0x10, veml7700),
-    (0x62, scd41)
-])
+from .constants import *
+from .profiles import *
 
 class DeviceInterface:
     def __init__(self, profile: DeviceProfile):
         self._device_profile = profile
+
+    @property
+    def profile(self) -> DeviceProfile:
+        return self._device_profile
 
     @property
     def address(self) -> int:
@@ -122,3 +26,62 @@ class DeviceInterface:
     @property
     def name(self) -> str:
         return self._device_profile.name
+
+    def real_device(self):
+        pass
+
+class Bmp390(DeviceInterface):
+    def __init__(self, profile: DeviceProfile, i2c: I2C):
+        super().__init__(profile)
+        self._bmp = adafruit_bmp3xx.BMP3XX_I2C(i2c)
+
+    @property
+    def real_device(self):
+        return self._bmp
+
+class Sht41(DeviceInterface):
+    def __init__(self, profile: DeviceProfile, i2c: I2C):
+        super().__init__(profile)
+        self._sht = adafruit_sht4x.SHT4x(i2c)
+
+    @property
+    def real_device(self):
+        return self._sht
+
+class Veml7700(DeviceInterface):
+    def __init__(self, profile: DeviceProfile, i2c: I2C):
+        super().__init__(profile)
+        self._veml7700 = adafruit_veml7700.VEML7700(i2c)
+
+    @property
+    def real_device(self):
+        return self._veml7700
+
+class Scd41(DeviceInterface):
+    def __init__(self, profile: DeviceProfile, i2c: I2C):
+        super().__init__(profile)
+        self._scd = adafruit_scd4x.SCD4X(i2c)
+
+    @property
+    def real_device(self):
+        return self._scd
+
+class DeviceFactory:
+    def __init__(self):
+        self._ctors = {}
+
+    def register_device(self, board, ctor):
+        self._ctors[board] = ctor
+
+    def get_device(self, board: int, profile: DeviceProfile, i2c: I2C) -> DeviceInterface:
+        ctor = self._ctors.get(board)
+        if not ctor:
+            raise ValueError(board)
+
+        return ctor(profile, i2c)
+
+device_factory = DeviceFactory()
+device_factory.register_device(BMP390, Bmp390)
+device_factory.register_device(SHT41, Sht41)
+device_factory.register_device(VEML7700, Veml7700)
+device_factory.register_device(SCD41, Scd41)

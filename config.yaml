@@ -12,7 +12,8 @@ app:
       room: office
       version: 0.0.1
 sensor-environment:
+  # XXX make this a virtual device to messure mean-sea-level-pressure
+  # after DeviceTree work
   altimeter-calibration:
     interval-time: 10
-    interval-units: minutes
   indoors: true

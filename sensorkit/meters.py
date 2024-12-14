@@ -7,18 +7,14 @@ try:
 except ImportError:
     pass
 
-import adafruit_bmp3xx
-import adafruit_scd4x
-import adafruit_sht4x
-import adafruit_veml7700
-
 from . import datastructures
 from . import devices
 
 class MeterInterface(devices.DeviceInterface):
-    def __init__(self, profile: devices.DeviceProfile, i2c: I2C,
+    def __init__(self, device, i2c: I2C,
                  state: datastructures.StateInterface | None = None):
-        super().__init__(profile)
+        super().__init__(device.profile)
+        self._device = device
         self._i2c_bus = i2c
         self._state = state
 
@@ -41,29 +37,17 @@ class MeterInterface(devices.DeviceInterface):
     def unit(self) -> str:
         pass
 
-    def raw_device(self):
-        pass
-
 #
 # BMP390 based measurements
-class Bmp390(MeterInterface):
-    def __init__(self, profile: devices.DeviceProfile, i2c: I2C,
+class Bmp390Temperature(MeterInterface):
+    def __init__(self, device, i2c: I2C,
                  state: datastructures.StateInterface | None = None):
-        super().__init__(profile, i2c, state)
-        self._bmp = adafruit_bmp3xx.BMP3XX_I2C(i2c)
-
-    @property
-    def raw_device(self):
-        return self._bmp
-
-class Bmp390Temperature(Bmp390):
-    def __init__(self, profile: devices.DeviceProfile, i2c: I2C,
-                 state: datastructures.StateInterface | None = None):
-        super().__init__(profile, i2c, state)
+        super().__init__(device, i2c, state)
 
     @property
     def measure(self) -> float:
-        return self._bmp.temperature
+        bmp = self._device.real_device
+        return bmp.temperature
 
     @property
     def measurement(self) -> int:
@@ -73,14 +57,15 @@ class Bmp390Temperature(Bmp390):
     def units(self) -> str:
         return 'Celsius (C)'
 
-class Bmp390Pressure(Bmp390):
-    def __init__(self, profile: devices.DeviceProfile, i2c: I2C,
+class Bmp390Pressure(MeterInterface):
+    def __init__(self, device, i2c: I2C,
                  state: datastructures.StateInterface | None = None):
-        super().__init__(profile, i2c, state)
+        super().__init__(device, i2c, state)
 
     @property
     def measure(self) -> float:
-        return self._bmp.pressure
+        bmp = self._device.real_device
+        return bmp.pressure
 
     @property
     def measurement(self) -> int:
@@ -90,18 +75,22 @@ class Bmp390Pressure(Bmp390):
     def units(self) -> str:
         return 'Hectopascal (hPa)'
 
-class Bmp390Altitude(Bmp390):
-    def __init__(self, profile: devices.DeviceProfile, i2c: I2C,
+class Bmp390Altitude(MeterInterface):
+    def __init__(self, device, i2c: I2C,
                  state: datastructures.StateInterface | None = None):
-        super().__init__(profile, i2c, state)
-        self._default = self._bmp.sea_level_pressure
+        super().__init__(device, i2c, state)
+
+        # XXX for now use the real_device...must improve
+        bmp = self._device.real_device
+        self._default = bmp.sea_level_pressure
         self._key = 'altimeter_calibration'
 
         self._state.add_key_listener(self._key, self.state_callback)
 
     @property
     def measure(self) -> float:
-        return self._bmp.altitude
+        bmp = self._device.real_device
+        return bmp.altitude
 
     @property
     def measurement(self) -> int:
@@ -113,43 +102,37 @@ class Bmp390Altitude(Bmp390):
 
     @property
     def sea_level_pressure(self):
-        return self._bmp.sea_level_pressure
+        bmp = self._device.real_device
+        return bmp.sea_level_pressure
 
     @sea_level_pressure.setter
     def sea_level_pressure(self, msl: float):
-        self._bmp.sea_level_pressure = msl
+        bmp = self._device.real_device
+        bmp.sea_level_pressure = msl
 
     def state_callback(self, key: str, value: typing.Any) -> None:
         if key != 'altimeter_calibration':
             return
 
-        if value != self._bmp.sea_level_pressure:
+        bmp = self._device.real_device
+        if value != bmp.sea_level_pressure:
             if value is None:
-                self._bmp_sea_level_pressure = self._default
+                bmp.sea_level_pressure = self._default
             else:
-                self._bmp.sea_level_pressure = value
+                bmp.sea_level_pressure = value
 # END BMP390
 
 #
 # SHT41 (SHT4x) measurements
-class Sht41(MeterInterface):
-    def __init__(self, profile: devices.DeviceProfile, i2c: I2C,
+class Sht41Temperature(MeterInterface):
+    def __init__(self, device, i2c: I2C,
                  state: datastructures.StateInterface | None = None):
-        super().__init__(profile, i2c, state)
-        self._sht = adafruit_sht4x.SHT4x(i2c)
-
-    @property
-    def raw_device(self):
-        return self._sht
-
-class Sht41Temperature(Sht41):
-    def __init__(self, profile: devices.DeviceProfile, i2c: I2C,
-                 state: datastructures.StateInterface | None = None):
-        super().__init__(profile, i2c, state)
+        super().__init__(device, i2c, state)
 
     @property
     def measure(self) -> float:
-        temp, _ =  self._sht.measurements
+        sht = self._device.real_device
+        temp, _ =  sht.measurements
         return temp
 
     @property
@@ -160,14 +143,15 @@ class Sht41Temperature(Sht41):
     def units(self) -> str:
         return 'Celsius (C)'
 
-class Sht41RelativeHumidity(Sht41):
-    def __init__(self, profile: devices.DeviceProfile, i2c: I2C,
+class Sht41RelativeHumidity(MeterInterface):
+    def __init__(self, device, i2c: I2C,
                  state: datastructures.StateInterface | None = None):
-        super().__init__(profile, i2c, state)
+        super().__init__(device, i2c, state)
 
     @property
     def measure(self) -> float:
-        _, rh = self._sht.measurements
+        sht = self._device.real_device
+        _, rh = sht.measurements
         return rh
 
     @property
@@ -181,24 +165,15 @@ class Sht41RelativeHumidity(Sht41):
 
 #
 # VEML7700 measurements
-class Veml7700(MeterInterface):
-    def __init__(self, profile: devices.DeviceProfile, i2c: I2C,
+class Veml7700AmbientLight(MeterInterface):
+    def __init__(self, device, i2c: I2C,
                  state: datastructures.StateInterface | None = None):
-        super().__init__(profile, i2c, state)
-        self._veml7700 = adafruit_veml7700.VEML7700(i2c)
-
-    @property
-    def raw_device(self):
-        return self._veml7700
-
-class Veml7700AmbientLight(Veml7700):
-    def __init__(self, profile: devices.DeviceProfile, i2c: I2C,
-                 state: datastructures.StateInterface | None = None):
-        super().__init__(profile, i2c, state)
+        super().__init__(device, i2c, state)
 
     @property
     def measure(self) -> float:
-        l = self._veml7700.light
+        veml7700 = self._device.real_device
+        l = veml7700.light
         return l
 
     @property
@@ -209,14 +184,15 @@ class Veml7700AmbientLight(Veml7700):
     def units(self) -> str:
         return 'Ambient Light Data'
 
-class Veml7700Lux(Veml7700):
-    def __init__(self, profile: devices.DeviceProfile, i2c: I2C,
+class Veml7700Lux(MeterInterface):
+    def __init__(self, device, i2c: I2C,
                  state: datastructures.StateInterface | None = None):
-        super().__init__(profile, i2c, state)
+        super().__init__(device, i2c, state)
 
     @property
     def measure(self) -> float:
-        l = self._veml7700.lux
+        veml7700 = self._device.real_device
+        l = veml7700.lux
         return l
 
     @property
@@ -230,24 +206,15 @@ class Veml7700Lux(Veml7700):
 
 #
 # SCD41 (SCD4x) measurements
-class Scd41(MeterInterface):
-    def __init__(self, profile: devices.DeviceProfile, i2c: I2C,
+class Scd41Temperature(MeterInterface):
+    def __init__(self, device, i2c: I2C,
                  state: datastructures.StateInterface | None = None):
-        super().__init__(profile, i2c, state)
-        self._scd = adafruit_scd4x.SCD4X(i2c)
-
-    @property
-    def raw_device(self):
-        return self._scd
-
-class Scd41Temperature(Scd41):
-    def __init__(self, profile: devices.DeviceProfile, i2c: I2C,
-                 state: datastructures.StateInterface | None = None):
-        super().__init__(profile, i2c, state)
+        super().__init__(device, i2c, state)
 
     @property
     def measure(self) -> float:
-        temp = self._scd.temperature
+        scd = self._device.real_device
+        temp = scd.temperature
         return temp
 
     @property
@@ -258,14 +225,15 @@ class Scd41Temperature(Scd41):
     def units(self) -> str:
         return 'Celsius (C)'
 
-class Scd41RelativeHumidity(Scd41):
-    def __init__(self, profile: devices.DeviceProfile, i2c: I2C,
+class Scd41RelativeHumidity(MeterInterface):
+    def __init__(self, device, i2c: I2C,
                  state: datastructures.StateInterface | None = None):
-        super().__init__(profile, i2c, state)
+        super().__init__(device, i2c, state)
 
     @property
     def measure(self) -> float:
-        rh = self._scd4x.relative_humidity
+        scd = self._device.real_device
+        rh = scd.relative_humidity
         return rh
 
     @property
@@ -276,14 +244,15 @@ class Scd41RelativeHumidity(Scd41):
     def units(self) -> str:
         return 'Percent Relative Humidity (% rH)'
 
-class Scd41CO2(Scd41):
-    def __init__(self, profile: devices.DeviceProfile, i2c: I2C,
+class Scd41CO2(MeterInterface):
+    def __init__(self, device, i2c: I2C,
                  state: datastructures.StateInterface | None = None):
-        super().__init__(profile, i2c, state)
+        super().__init__(device, i2c, state)
 
     @property
     def measure(self) -> int:
-        co2 = self._scd4x.CO2
+        scd = self._device.real_device
+        co2 = scd.CO2
         return co2
 
     @property
@@ -299,7 +268,15 @@ class MeterFactory:
     def __init__(self):
         self._boards = {}
 
-    def register_method(self, board, measurement: int, ctor):
+    def register_board(self, board, ctor):
+        try:
+            dev_board = self._boards[board]
+            dev_board['ctor'] = ctor
+        except KeyError as e:
+            self._board[board] = dict()
+            self._board[board]['ctor'] = ctor
+
+    def register_meter(self, board, measurement: int, ctor):
         try:
             dev_board = self._boards[board]
             dev_board[measurement] = ctor
@@ -307,24 +284,23 @@ class MeterFactory:
             self._boards[board] = dict()
             self._boards[board][measurement] = ctor
 
-    def get_meter(self, board: int, measurement: int,
-                  profile: devices.DeviceProfile, i2c: I2C,
+    def get_meter(self, device, board: int, measurement: int, i2c: I2C,
                   state: datastructures.StateInterface | None = None) -> MeterInterface:
         dev_board = self._boards.get(board)
         ctor = dev_board.get(measurement)
         if not ctor:
             raise ValueError('{}:{}'.format(board, measurement))
 
-        return ctor(profile, i2c, state)
+        return ctor(device, i2c, state)
 
 meter_factory = MeterFactory()
-meter_factory.register_method(devices.BMP390, devices.TEMPERATURE, Bmp390Temperature)
-meter_factory.register_method(devices.BMP390, devices.PRESSURE, Bmp390Pressure)
-meter_factory.register_method(devices.BMP390, devices.ALTITUDE, Bmp390Altitude)
-meter_factory.register_method(devices.SHT41, devices.TEMPERATURE, Sht41Temperature)
-meter_factory.register_method(devices.SHT41, devices.RELATIVE_HUMIDITY, Sht41RelativeHumidity)
-meter_factory.register_method(devices.VEML7700, devices.AMBIENT_LIGHT, Veml7700AmbientLight)
-meter_factory.register_method(devices.VEML7700, devices.LUX, Veml7700Lux)
-meter_factory.register_method(devices.SCD41, devices.TEMPERATURE, Scd41Temperature)
-meter_factory.register_method(devices.SCD41, devices.RELATIVE_HUMIDITY, Scd41RelativeHumidity)
-meter_factory.register_method(devices.SCD41, devices.CO2, Scd41CO2)
+meter_factory.register_meter(devices.BMP390, devices.TEMPERATURE, Bmp390Temperature)
+meter_factory.register_meter(devices.BMP390, devices.PRESSURE, Bmp390Pressure)
+meter_factory.register_meter(devices.BMP390, devices.ALTITUDE, Bmp390Altitude)
+meter_factory.register_meter(devices.SHT41, devices.TEMPERATURE, Sht41Temperature)
+meter_factory.register_meter(devices.SHT41, devices.RELATIVE_HUMIDITY, Sht41RelativeHumidity)
+meter_factory.register_meter(devices.VEML7700, devices.AMBIENT_LIGHT, Veml7700AmbientLight)
+meter_factory.register_meter(devices.VEML7700, devices.LUX, Veml7700Lux)
+meter_factory.register_meter(devices.SCD41, devices.TEMPERATURE, Scd41Temperature)
+meter_factory.register_meter(devices.SCD41, devices.RELATIVE_HUMIDITY, Scd41RelativeHumidity)
+meter_factory.register_meter(devices.SCD41, devices.CO2, Scd41CO2)
