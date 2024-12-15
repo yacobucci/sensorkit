@@ -14,12 +14,13 @@ import uvicorn
 
 from api import metrics
 from sensorkit.config import Config
+from sensorkit import constants
 from sensorkit import controls
 from sensorkit import datastructures
 from sensorkit import devices
 from sensorkit import devicetree
 from sensorkit import meters
-from tools.getters import OpenMeteoGetter
+from sensorkit.tools.getters import OpenMeteoGetter
 
 logger = logging.getLogger(__name__)
 
@@ -40,7 +41,6 @@ def set_log_level(level: str, logger: logging.Logger):
 scheduler = BackgroundScheduler()
 state = None
 
-location = 'https://api.open-meteo.com/v1/forecast?'
 params = {
     'latitude': 39.7592537,
     'longitude': -105.1230315,
@@ -92,17 +92,22 @@ def main():
 
         logger.debug('getting mean sea level pressure for altimeter calibration')
 
-        handler = OpenMeteoGetter(state)
-        handler.url_get(location, params)
+        # allow for different buses
+        # cleanup virtual device API
+        handler = OpenMeteoGetter(
+                devices.device_factory.get_device(board.I2C(),
+                                                  'open-meteo',
+                                                  constants.VIRTUAL_DEVICE,
+                                                  [ constants.MEAN_SEA_LEVEL_PRESSURE ],
+                                                  constants.VIRTUAL_ADDR),
+                                  state, scheduler)
+        tree.add('open-meteo-msl', handler,
+                 (constants.VIRTUAL | constants.METER))
+        handler.url_get(params)
+        handler.add_schedule('url_get', params, interval)
+
         logger.debug('calibration pressure stored: %s', state.altimeter_calibration)
-
         logger.debug('adding calibration job to scheduler')
-
-        #XXX make objects so can configure with data from config
-        scheduler.add_job(handler.url_get, 'interval', seconds=interval, kwargs = {
-            'url': location,
-            'params': params
-        })
     except AttributeError as e:
         logger.info('disabling altimeter calibration - %s', e)
 
