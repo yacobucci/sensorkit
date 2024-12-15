@@ -88,9 +88,7 @@ def main():
     state.tree = tree
 
     try:
-        #XXX parse units, so to not assume minutes
         interval = config.altimeter_calibration_interval
-        #units = config.altimeter_calibration_interval_units
 
         logger.debug('getting mean sea level pressure for altimeter calibration')
 
@@ -101,7 +99,7 @@ def main():
         logger.debug('adding calibration job to scheduler')
 
         #XXX make objects so can configure with data from config
-        scheduler.add_job(handler.url_get, 'interval', minutes=interval, kwargs = {
+        scheduler.add_job(handler.url_get, 'interval', seconds=interval, kwargs = {
             'url': location,
             'params': params
         })

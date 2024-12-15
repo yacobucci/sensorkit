@@ -19,6 +19,7 @@ binho-host-adapter==0.1.6
 click==8.1.7
 h11==0.14.0
 idna==3.10
+isodate==0.7.2
 lgpio==0.2.2.0
 prometheus_client==0.21.1
 pyftdi==0.56.0

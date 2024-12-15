@@ -15,5 +15,5 @@ sensor-environment:
   # XXX make this a virtual device to messure mean-sea-level-pressure
   # after DeviceTree work
   altimeter-calibration:
-    interval-time: 10
+    interval-time: PT10M0S
   indoors: true
