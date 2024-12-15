@@ -40,7 +40,7 @@ class Metadata:
         return self._device_type & devices.DETECTOR
 
 class DeviceTree:
-    def __init__(self, i2c: I2C, state: datastructures.StateInterface):
+    def __init__(self, i2c: I2C, state: datastructures.State):
         self._state = state
         self._i2c = i2c
 

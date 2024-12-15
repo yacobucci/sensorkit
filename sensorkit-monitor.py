@@ -19,7 +19,7 @@ from sensorkit import datastructures
 from sensorkit import devices
 from sensorkit import devicetree
 from sensorkit import meters
-from tools.getters import url_get, OpenMeteoHandler
+from tools.getters import OpenMeteoGetter
 
 logger = logging.getLogger(__name__)
 
@@ -46,69 +46,6 @@ params = {
     'longitude': -105.1230315,
     'current': 'pressure_msl'
 }
-
-#def create_meters(i2c: I2C, state: datastructures.State,
-#                  ignore_addr_set: set) -> list[meters.MeterInterface]:
-#    objects = []
-#    if i2c.try_lock():
-#        addresses = i2c.scan()
-#        i2c.unlock()
-#
-#        logger.info('device scan %s, ignore set %s',
-#                        [hex(n) for n in addresses],
-#                        [hex(n) for n in ignore_addr_set])
-#
-#        for a in addresses:
-#            if a in ignore_addr_set:
-#                logger.debug('ignoring addr %s, filtered by ignore_addr_set argument', hex(a))
-#                continue
-#
-#            logger.debug('setting up device address %s', hex(a))
-#
-#            dev = devices.profiles[a]
-#            logger.debug('found device: %s', dev)
-#
-#            for cap in dev.capabilities_gen():
-#                try:
-#                    m = meters.meter_factory.get_meter(dev.device_id, cap, dev, i2c, state)
-#                    objects.append(m)
-#                except ValueError as e:
-#                    logger.warning('name %s, board %s, capability %s - no associated ctor',
-#                                       dev.name, dev.device_id, cap)
-#    return objects
-
-#def setup_bus_devices(state: datastructures.StateInterface) -> list[meters.MeterInterface]:
-#    all_meters = []
-#    i2c = board.I2C()
-#
-#    bus_devices = i2c.scan()
-#    logger.debug('initial scan results: %s', [hex(n) for n in bus_devices])
-#
-#    if len(bus_devices) == 1:
-#        logger.info('single device bus, checking for multiplexer presence')
-#
-#        addr = bus_devices[0]
-#        d = devices.profiles[addr]
-#        if d.is_mux():
-#            logger.info('multiplexer %s found at addr %s, setting up multiple channels',
-#                        d.name, hex(addr))
-#
-#            mux = controls.mux_factory.get_mux(d.device_id, i2c)
-#            logger.info('multiplexer supported channels: %s', len(mux))
-#
-#            for virtual_i2c in mux.channels():
-#                ignore_addr_set = set([ mux.address ])
-#                objects = create_meters(virtual_i2c, state, ignore_addr_set)
-#                logger.info('meters %s', meters)
-#                all_meters.extend(objects)
-#        else:
-#            logger.info('single device on bus, setting up meters')
-#            all_meters = create_meters(virtual_i2c, state, {})
-#    else:
-#        logger.info('multiple devices on bus, setting up meters')
-#        all_meters = create_meters(virtual_i2c, state, {})
-#
-#    return all_meters
 
 def main():
     parser = argparse.ArgumentParser(description='monitor.py: I2C sensor monitor')
@@ -157,18 +94,16 @@ def main():
 
         logger.debug('getting mean sea level pressure for altimeter calibration')
 
-        handler = OpenMeteoHandler()
-        url_get(state, location, params, handler.handle_response)
+        handler = OpenMeteoGetter(state)
+        handler.url_get(location, params)
         logger.debug('calibration pressure stored: %s', state.altimeter_calibration)
 
         logger.debug('adding calibration job to scheduler')
 
         #XXX make objects so can configure with data from config
-        scheduler.add_job(url_get, 'interval', minutes=interval, kwargs = {
-            'state': state,
+        scheduler.add_job(handler.url_get, 'interval', minutes=interval, kwargs = {
             'url': location,
-            'params': params,
-            'handler': handler.handle_response
+            'params': params
         })
     except AttributeError as e:
         logger.info('disabling altimeter calibration - %s', e)

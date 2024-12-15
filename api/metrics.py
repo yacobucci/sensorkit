@@ -1,3 +1,4 @@
+import abc
 import logging
 
 from prometheus_client import Counter, Gauge, generate_latest
@@ -13,9 +14,16 @@ prometheus_labels = [ 'board_name', 'board', 'bus_id', 'address', 'units' ]
 
 dynamic_gauges = {}
 
-class MetricsInterface:
+class MetricsInterface(metaclass=abc.ABCMeta):
+    @classmethod
+    def __subclasshook__(cls, subclass):
+        return (hasattr(subclass, 'export') and
+                callable(subclass.export) or
+                NotImplemented)
+
+    @abc.abstractmethod
     def export():
-        pass
+        raise NotImplementedError
 
 class PrometheusExporter(MetricsInterface):
     def __init__(self, labels: dict[str, str] = {}):

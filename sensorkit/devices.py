@@ -1,3 +1,5 @@
+import abc
+
 import adafruit_bmp3xx
 import adafruit_scd4x
 import adafruit_sht4x
@@ -7,7 +9,13 @@ from busio import I2C
 from .constants import *
 from .profiles import *
 
-class DeviceInterface:
+class DeviceInterface(metaclass=abc.ABCMeta):
+    @classmethod
+    def __subclasshook__(cls, subclass):
+        return (hasattr(subclass, 'real_device') and
+                callable(subclass.real_device) or
+                NotImplemented)
+
     def __init__(self, profile: DeviceProfile):
         self._device_profile = profile
 
@@ -27,8 +35,9 @@ class DeviceInterface:
     def name(self) -> str:
         return self._device_profile.name
 
+    @abc.abstractmethod
     def real_device(self):
-        pass
+        raise NotImplementedError
 
 class Bmp390(DeviceInterface):
     def __init__(self, profile: DeviceProfile, i2c: I2C):

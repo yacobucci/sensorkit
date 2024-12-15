@@ -1,3 +1,5 @@
+import abc
+
 try:
     import typing
     from typing import List
@@ -10,9 +12,19 @@ except ImportError:
 from . import datastructures
 from . import devices
 
-class MeterInterface(devices.DeviceInterface):
+class MeterInterface(devices.DeviceInterface, metaclass=abc.ABCMeta):
+    @classmethod
+    def __subclasshook__(cls, subclass):
+        return (hasattr(subclass, 'measure') and
+                callable(subclass.measure) and
+                hasattr(subclass, measurement) and
+                callable(subclass.measurement) and
+                hasattr(subclass, 'units') and
+                callable(subclass.units) or
+                NotImplemented)
+
     def __init__(self, device, i2c: I2C,
-                 state: datastructures.StateInterface | None = None):
+                 state: datastructures.State | None = None):
         super().__init__(device.profile)
         self._device = device
         self._i2c_bus = i2c
@@ -28,20 +40,27 @@ class MeterInterface(devices.DeviceInterface):
                 r = r + 1
         return r
 
+    @property
+    def real_device(self):
+        return self._device.real_device
+
+    @abc.abstractmethod
     def measure(self) -> float:
-        pass
+        raise NotImplementedError
 
+    @abc.abstractmethod
     def measurement(self) -> int:
-        pass
+        raise NotImplementedError
 
-    def unit(self) -> str:
-        pass
+    @abc.abstractmethod
+    def units(self) -> str:
+        raise NotImplementedError
 
 #
 # BMP390 based measurements
 class Bmp390Temperature(MeterInterface):
     def __init__(self, device, i2c: I2C,
-                 state: datastructures.StateInterface | None = None):
+                 state: datastructures.State | None = None):
         super().__init__(device, i2c, state)
 
     @property
@@ -59,7 +78,7 @@ class Bmp390Temperature(MeterInterface):
 
 class Bmp390Pressure(MeterInterface):
     def __init__(self, device, i2c: I2C,
-                 state: datastructures.StateInterface | None = None):
+                 state: datastructures.State | None = None):
         super().__init__(device, i2c, state)
 
     @property
@@ -77,7 +96,7 @@ class Bmp390Pressure(MeterInterface):
 
 class Bmp390Altitude(MeterInterface):
     def __init__(self, device, i2c: I2C,
-                 state: datastructures.StateInterface | None = None):
+                 state: datastructures.State | None = None):
         super().__init__(device, i2c, state)
 
         # XXX for now use the real_device...must improve
@@ -126,7 +145,7 @@ class Bmp390Altitude(MeterInterface):
 # SHT41 (SHT4x) measurements
 class Sht41Temperature(MeterInterface):
     def __init__(self, device, i2c: I2C,
-                 state: datastructures.StateInterface | None = None):
+                 state: datastructures.State | None = None):
         super().__init__(device, i2c, state)
 
     @property
@@ -145,7 +164,7 @@ class Sht41Temperature(MeterInterface):
 
 class Sht41RelativeHumidity(MeterInterface):
     def __init__(self, device, i2c: I2C,
-                 state: datastructures.StateInterface | None = None):
+                 state: datastructures.State | None = None):
         super().__init__(device, i2c, state)
 
     @property
@@ -167,7 +186,7 @@ class Sht41RelativeHumidity(MeterInterface):
 # VEML7700 measurements
 class Veml7700AmbientLight(MeterInterface):
     def __init__(self, device, i2c: I2C,
-                 state: datastructures.StateInterface | None = None):
+                 state: datastructures.State | None = None):
         super().__init__(device, i2c, state)
 
     @property
@@ -186,7 +205,7 @@ class Veml7700AmbientLight(MeterInterface):
 
 class Veml7700Lux(MeterInterface):
     def __init__(self, device, i2c: I2C,
-                 state: datastructures.StateInterface | None = None):
+                 state: datastructures.State | None = None):
         super().__init__(device, i2c, state)
 
     @property
@@ -208,7 +227,7 @@ class Veml7700Lux(MeterInterface):
 # SCD41 (SCD4x) measurements
 class Scd41Temperature(MeterInterface):
     def __init__(self, device, i2c: I2C,
-                 state: datastructures.StateInterface | None = None):
+                 state: datastructures.State | None = None):
         super().__init__(device, i2c, state)
 
     @property
@@ -227,7 +246,7 @@ class Scd41Temperature(MeterInterface):
 
 class Scd41RelativeHumidity(MeterInterface):
     def __init__(self, device, i2c: I2C,
-                 state: datastructures.StateInterface | None = None):
+                 state: datastructures.State | None = None):
         super().__init__(device, i2c, state)
 
     @property
@@ -246,7 +265,7 @@ class Scd41RelativeHumidity(MeterInterface):
 
 class Scd41CO2(MeterInterface):
     def __init__(self, device, i2c: I2C,
-                 state: datastructures.StateInterface | None = None):
+                 state: datastructures.State | None = None):
         super().__init__(device, i2c, state)
 
     @property
@@ -285,7 +304,7 @@ class MeterFactory:
             self._boards[board][measurement] = ctor
 
     def get_meter(self, device, board: int, measurement: int, i2c: I2C,
-                  state: datastructures.StateInterface | None = None) -> MeterInterface:
+                  state: datastructures.State | None = None) -> MeterInterface:
         dev_board = self._boards.get(board)
         ctor = dev_board.get(measurement)
         if not ctor:

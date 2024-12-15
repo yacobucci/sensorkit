@@ -1,3 +1,5 @@
+import abc
+
 try:
     from typing import List
     from typing_extensions import Literal
@@ -11,15 +13,28 @@ import adafruit_tca9548a
 
 from . import devices
 
-class MuxInterface(devices.DeviceInterface):
+class MuxInterface(devices.DeviceInterface, metaclass=abc.ABCMeta):
+    @classmethod
+    def __subclasshook__(cls, subclass):
+        return (hasattr(subclass, 'address') and
+                callable(subclass.address) and
+                hasattr(subclass, 'channels') and
+                callable(subclass.channels) and
+                hasattr(subclass, '__len__') and
+                callable(subclass.__len__) or
+                NotImplemented)
+
+    @abc.abstractmethod
     def address(self) -> int:
-        pass
+        raise NotImplementedError
 
+    @abc.abstractmethod
     def channels(self):
-        pass
+        raise NotImplementedError
 
+    @abc.abstractmethod
     def __len__(self):
-        pass
+        raise NotImplementedError
 
 class PCA9546A(MuxInterface):
     def __init__(self, i2c: I2C):
@@ -36,6 +51,10 @@ class PCA9546A(MuxInterface):
     @property
     def board(self) -> int:
         return devices.PCA9546A
+
+    @property
+    def real_device(self):
+        return self._mux
 
     def channels(self):
         for c in range(len(self._mux)):
