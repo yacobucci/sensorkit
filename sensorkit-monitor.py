@@ -127,23 +127,22 @@ def main():
     config = Config(args.config_file)
 
     try:
-        # XXX i know this is a file, but disambiguate to stream eventually
-        #    h = logging.StreamHandler(sys.stdout)
-        #    f = logging.Formatter('%(levelname)s %(asctime)s : %(message)s')
-        #    h.setFormatter(f)
-        #    logger.addHandler(h)
         dest = config.log_destination
+        is_stream = False
         level = config.log_level
         fmt = config.log_format
-
-        logging.basicConfig(filename=dest, encoding='utf-8', format=fmt)
-        set_log_level(level, logger)
     except AttributeError as e:
         print('disabling custom logging, using defaults - {}'.format(e), file=sys.stderr)
-        h = logging.StreamHandler(sys.stdout)
-        f = logging.Formatter('%(levelname)s %(asctime)s : %(message)s')
-        h.setFormatter(f)
-        logger.addHandler(h)
+        dest = sys.stdout
+        is_stream = True
+        fmt = '%(levelname)s %(asctime)s : %(message)s'
+        level = 'debug'
+    finally:
+        if is_stream:
+            logging.basicConfig(stream=dest, encoding='utf-8', format=fmt)
+        else:
+            logging.basicConfig(filename=dest, encoding='utf-8', format=fmt)
+        set_log_level(level, logger)
 
     app = Starlette(debug=True)
     state = datastructures.State(app.state)
