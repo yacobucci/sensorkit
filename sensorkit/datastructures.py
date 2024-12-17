@@ -1,25 +1,14 @@
 import typing
 
-class StateInterface:
+class State:
+    _state: dict[str, typing.Any]
     _listeners: dict[str, list[callable]]
 
-    def __init__(self):
-        super().__setattr__("_listeners", {})
-    
-    def add_key_listener(self, key: typing.Any, handler: callable) -> None:
-        if key in self._listeners:
-            self._listeners[key].append(handler)
-        else:
-            self._listeners[key] = [ handler ]
-
-class State(StateInterface):
-    _state: dict[str, typing.Any]
-
     def __init__(self, state: dict[str, typing.Any] | None = None):
-        super().__init__()
         if state is None:
             state = {}
         super().__setattr__("_state", state)
+        super().__setattr__("_listeners", {})
 
     def __setattr__(self, key: typing.Any, value: typing.Any) -> None:
         #self._state[key] = value
@@ -42,3 +31,9 @@ class State(StateInterface):
         if key in self._listeners:
             for h in self._listeners[key]:
                 h(key, None)
+
+    def add_key_listener(self, key: typing.Any, handler: callable) -> None:
+        if key in self._listeners:
+            self._listeners[key].append(handler)
+        else:
+            self._listeners[key] = [ handler ]

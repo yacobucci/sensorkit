@@ -1,8 +1,10 @@
+import abc
 import logging
 
 from prometheus_client import Counter, Gauge, generate_latest
 from starlette.responses import Response
 
+from sensorkit import constants
 from sensorkit import devices
 from sensorkit import devicetree
 
@@ -13,9 +15,16 @@ prometheus_labels = [ 'board_name', 'board', 'bus_id', 'address', 'units' ]
 
 dynamic_gauges = {}
 
-class MetricsInterface:
+class MetricsInterface(metaclass=abc.ABCMeta):
+    @classmethod
+    def __subclasshook__(cls, subclass):
+        return (hasattr(subclass, 'export') and
+                callable(subclass.export) or
+                NotImplemented)
+
+    @abc.abstractmethod
     def export():
-        pass
+        raise NotImplementedError
 
 class PrometheusExporter(MetricsInterface):
     def __init__(self, labels: dict[str, str] = {}):
@@ -28,7 +37,7 @@ class PrometheusExporter(MetricsInterface):
         tree = request.app.state.tree
         for meter in tree.meters():
             if meter.measurement not in dynamic_gauges:
-                dimension = devices.to_capability_strings[meter.measurement]
+                dimension = constants.to_capability_strings[meter.measurement]
 
                 g = Gauge(dimension,
                           'Sensor measurement - {}'.format(dimension),
@@ -40,7 +49,7 @@ class PrometheusExporter(MetricsInterface):
             d[prometheus_labels[0]] = meter.name
             d[prometheus_labels[1]] = meter.board
             d[prometheus_labels[2]] = meter.bus_id
-            d[prometheus_labels[3]] = meter.address
+            d[prometheus_labels[3]] = hex(meter.address)
             d[prometheus_labels[4]] = meter.units
             for k in self._config:
                 d[k] = self._config[k]

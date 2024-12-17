@@ -1,5 +1,7 @@
 import typing
 import os.path
+
+import isodate
 import yaml
 
 class Config:
@@ -19,7 +21,6 @@ class Config:
 
         #self._altimeter_calibration_key = None
         self._altimeter_calibration_interval = None
-        #self._altimeter_calibration_interval_units = None
         self._indoors = None
 
     @property
@@ -157,23 +158,9 @@ class Config:
             message = 'config must have sensor-environment to calibrate altimeters, missing {}'
             raise AttributeError(message.format(e))
 
-        self._altimeter_calibration_interval = calibration.get('interval-time', '60')
+        delta = isodate.parse_duration(calibration.get('interval-time', 'PT60M0S'))
+        self._altimeter_calibration_interval = delta.seconds
         return self._altimeter_calibration_interval
-
-    #@property
-    #def altimeter_calibration_interval_units(self):
-    #    if self._altimeter_calibration_interval_units is not None:
-    #        return self._altimeter_calibration_interval_units
-
-    #    try:
-    #        env = self._data['sensor-environment']
-    #        calibration = env['altimeter-calibration']
-    #    except KeyError as e:
-    #        message = 'config must have sensor-environment to calibrate altimeters, missing {}'
-    #        raise AttributeError(message.format(e))
-
-    #    self._altimeter_calibration_interval_units = calibration.get('interval-units', 'minutes')
-    #    return self._altimeter_calibration_interval_units
 
     @property
     def indoors(self):

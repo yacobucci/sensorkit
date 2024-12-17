@@ -19,10 +19,6 @@ class DeviceProfile:
     def capabilities(self) -> list[int]:
         return self._caps
 
-    def capabilities_gen(self) -> int:
-        for cap in self._caps:
-            yield cap
-
     @property
     def name(self) -> str:
         return self._name
