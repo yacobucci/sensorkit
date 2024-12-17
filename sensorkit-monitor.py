@@ -12,7 +12,7 @@ from starlette.responses import JSONResponse
 from starlette.routing import Route
 import uvicorn
 
-from api import metrics
+from sensorkit.api import metrics
 from sensorkit.config import Config
 from sensorkit import constants
 from sensorkit import controls
