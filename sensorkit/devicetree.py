@@ -1,5 +1,6 @@
 import logging
 from collections.abc import Iterator
+from typing import Any
 
 from anytree import Node, PreOrderIter
 from anytree.search import find
@@ -81,25 +82,96 @@ class DeviceTree:
         self._state = state
         self._i2c = i2c
 
-        self._root = Node(ROOT_NAME, obj=self._i2c, metadata=Metadata(ROOT))
+        self._root = Node(ROOT_NAME, obj=None, metadata=Metadata(ROOT))
         self._i2c_bus = Node(I2C_NAME, parent=self._root, obj=self._i2c,
                              metadata=Metadata(constants.BUS))
         # /virtual-bus/
-        #             |- meters    /{id}
-        #             |- detectors /{id}
+        #             |- {name}
+        #             |- {name}
         self._virtual_bus = Node(VIRTUAL_NAME, parent=self._root, obj=None,
                                  metadata=Metadata(constants.BUS | constants.VIRTUAL))
 
         self._build_tree(self._i2c, self._i2c_bus)
 
-    # XXX eventually make this a little more generic
-    def meters(self) -> Iterator[meters.MeterInterface]:
+    # Helper to find meters, common use case
+    def meters_iter(self, func = None) -> Iterator[meters.MeterInterface]:
+        if func is not None and not callable(func):
+            raise TypeError('func argument must be callable or None')
+
+        def __decorate_filter(func = None):
+            def __filter(node: Node) -> bool:
+                meta = getattr(node, 'metadata', None)
+                if meta is not None:
+                    is_returnable = meta.is_meter
+                    if is_returnable and func is not None and callable(func):
+                        is_returnable = is_returnable and func(node)
+                    return is_returnable
+                return False
+            return __filter
+
+        for node in PreOrderIter(self._root, __decorate_filter(func)):
+            yield node.obj
+
+    def measurement_iter(self, measurement: int) -> Iterator[meters.MeterInterface]:
         def __filter(node: Node) -> bool:
-            meta = getattr(node, 'metadata', None)
-            if meta is not None:
-                return meta.is_meter and meta.is_physical
+            if hasattr(node, 'obj'):
+                obj = node.obj
+                if measurement == obj.measurement:
+                    return True
             return False
-        for node in PreOrderIter(self._root, __filter):
+
+        for m in self.meters_iter(__filter):
+            yield m
+
+    def measurement_by_board_iter(self, measurement: int,
+                                  board: int) -> Iterator[meters.MeterInterface]:
+        def __filter(node: Node) -> bool:
+            if hasattr(node, 'obj'):
+                obj = node.obj
+                if measurement == obj.measurement and board == obj.board:
+                    return True
+            return False
+
+        for m in self.meters_iter(__filter):
+            yield m
+
+    def devices_iter(self, func = None) -> Iterator[devices.DeviceInterface]:
+        if func is not None and not callable(func):
+            raise TypeError('func argument must be callable or None')
+
+        def __decorate_filter(func = None):
+            def __filter(node: Node) -> bool:
+                meta = getattr(node, 'metadata', None)
+                if meta is not None:
+                    is_returnable = meta.is_device
+                    if is_returnable and func is not None and callable(func):
+                        is_returnable = is_returnable and func(node)
+                    return is_returnable
+                return False
+            return __filter
+
+        for node in PreOrderIter(self._root, __decorate_filter(func)):
+            yield node.obj
+
+    def devices_by_board_iter(self, board: int) -> Iterator[devices.DeviceInterface]:
+        def __filter(node: Node) -> bool:
+            if hasattr(node, 'obj'):
+                obj = node.obj
+                if board == obj.board:
+                    return True
+            return False
+
+        for d in self.devices_iter(__filter):
+            yield d
+
+    # General purpose filtered iterator
+    def filtered_iter(self, func: callable) -> Iterator[Any]:
+        def __decorate_filter(func = None):
+            def __filter(node: Node) -> bool:
+                return func(node)
+            return __filter
+
+        for node in PreOrderIter(self._root, __decorate_filter(func)):
             yield node.obj
 
     # XXX puke, need to add some logging, but keeping the print template for now
