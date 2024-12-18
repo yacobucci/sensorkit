@@ -78,8 +78,7 @@ class Metadata:
         return bool(self._device_type & constants.DETECTOR)
 
 class DeviceTree:
-    def __init__(self, i2c: I2C, state: datastructures.State):
-        self._state = state
+    def __init__(self, i2c: I2C):
         self._i2c = i2c
 
         self._root = Node(ROOT_NAME, obj=None, metadata=Metadata(ROOT))
@@ -91,7 +90,8 @@ class DeviceTree:
         self._virtual_bus = Node(VIRTUAL_NAME, parent=self._root, obj=None,
                                  metadata=Metadata(constants.BUS | constants.VIRTUAL))
 
-        self._build_tree(self._i2c, self._i2c_bus)
+    def build(self, store: datastructures.Store) -> None:
+        self._build_tree(self._i2c, self._i2c_bus, store)
 
     # Helper to find meters, common use case
     def meters_iter(self, func = None) -> Iterator[meters.MeterInterface]:
@@ -220,7 +220,7 @@ class DeviceTree:
         n = Node(name, parent=self._virtual_bus, obj=obj, metadata=Metadata(typ), **kwargs)
         return n
 
-    def _build_tree(self, i2c, parent, addr_filter: set = set()):
+    def _build_tree(self, i2c, parent, store: datastructures.Store, addr_filter: set = set()):
         try:
             if i2c.try_lock():
                 devs = i2c.scan()
@@ -239,9 +239,9 @@ class DeviceTree:
 
             d = profiles.profiles[addr]
 
-            self._build_node(i2c, addr, d, parent)
+            self._build_node(i2c, addr, d, parent, store)
 
-    def _build_node(self, i2c, address, profile, parent):
+    def _build_node(self, i2c, address, profile, parent, store: datastructures.Store):
         if profile.is_mux():
             logger.info('multiplexer %s found at addr %s, setting up multiple channels',
                         profile.name, hex(address))
@@ -266,19 +266,19 @@ class DeviceTree:
                             metadata=Metadata(constants.CHANNEL))
                 addr_set = set()
                 addr_set.add(mux.address)
-                self._build_tree(channel, chan, addr_set)
+                self._build_tree(channel, chan, store, addr_set)
         else:
             dev = devices.device_factory.get_device(i2c, profile.name, profile.device_id,
                                                     profile.capabilities, address)
             node = Node(address, parent=parent, obj=dev,
                         metadata=Metadata(constants.DEVICE))
-            self._build_leaves(i2c, address, dev, node)
+            self._build_leaves(i2c, address, dev, node, store)
 
-    def _build_leaves(self, i2c, address, device, parent):
+    def _build_leaves(self, i2c, address, device, parent, store: datastructures.Store):
         # XXX only do this for meters, eventually need to discriminate with detectors
         for cap in device.capabilities_gen():
             try:
-                m = meters.meter_factory.get_meter(cap, device, self._state)
+                m = meters.meter_factory.get_meter(cap, device, store)
                 leaf = Node(constants.to_capability_strings[cap], parent=parent, obj=m,
                             metadata=Metadata(constants.METER))
             except ValueError as e:

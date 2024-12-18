@@ -50,8 +50,8 @@ class DeviceInterface(metaclass=abc.ABCMeta):
         raise NotImplementedError
 
 class Device(DeviceInterface):
-    def __init__(self, bus: I2C, name: str, board: int, capabilities: list[int],
-                 address: int | str):
+    def __init__(self, bus: I2C | None, name: str, board: int, capabilities: list[int],
+                 address: int):
         self._bus = bus
         self._name = name
         self._board = board
@@ -94,9 +94,9 @@ class Device(DeviceInterface):
 
 # XXX move away from i2c as only bus
 class VirtualDevice(Device):
-    def __init__(self, bus: I2C, name: str, board: int, capabilities: list[int],
-                 address: int | str = 'virtual'):
-        super().__init__(bus, name, board, capabilities, address)
+    def __init__(self, name: str, board: int, capabilities: list[int],
+                 address: int = constants.VIRTUAL_ADDR):
+        super().__init__(None, name, board, capabilities, address)
     
     @property
     def real_device(self):
@@ -104,7 +104,7 @@ class VirtualDevice(Device):
 
 class Bmp390(Device):
     def __init__(self, bus: I2C, name: str, board: int, capabilities: list[int],
-                 address: int | str = 119):
+                 address: int = 119):
         super().__init__(bus, name, board, capabilities, address)
         self._bmp = adafruit_bmp3xx.BMP3XX_I2C(bus, address)
 
@@ -114,7 +114,7 @@ class Bmp390(Device):
 
 class Sht41(Device):
     def __init__(self, bus: I2C, name: str, board: int, capabilities: list[int],
-                 address: int | str = 68):
+                 address: int = 68):
         super().__init__(bus, name, board, capabilities, address)
         self._sht = adafruit_sht4x.SHT4x(bus, address)
 
@@ -124,7 +124,7 @@ class Sht41(Device):
 
 class Veml7700(Device):
     def __init__(self, bus: I2C, name: str, board: int, capabilities: list[int],
-                 address: int | str = 16):
+                 address: int = 16):
         super().__init__(bus, name, board, capabilities, address)
         self._veml7700 = adafruit_veml7700.VEML7700(bus, address)
 
@@ -134,7 +134,7 @@ class Veml7700(Device):
 
 class Scd41(Device):
     def __init__(self, bus: I2C, name: str, board: int, capabilities: list[int],
-                 address: int | str = 98):
+                 address: int = 98):
         super().__init__(bus, name, board, capabilities, address)
         self._scd = adafruit_scd4x.SCD4X(bus, address)
 
@@ -150,7 +150,7 @@ class DeviceFactory:
         self._ctors[board] = ctor
 
     def get_device(self, bus: I2C, name: str, board: int, capabilities: list[int],
-                   address: int | str) -> DeviceInterface:
+                   address: int) -> DeviceInterface:
         ctor = self._ctors.get(board)
         if not ctor:
             raise ValueError(board)
@@ -158,7 +158,6 @@ class DeviceFactory:
         return ctor(bus, name, board, capabilities, address)
 
 device_factory = DeviceFactory()
-device_factory.register_device(constants.VIRTUAL_DEVICE, VirtualDevice)
 device_factory.register_device(constants.BMP390, Bmp390)
 device_factory.register_device(constants.SHT41, Sht41)
 device_factory.register_device(constants.VEML7700, Veml7700)

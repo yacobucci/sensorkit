@@ -85,10 +85,10 @@ class Meter(MeterInterface):
 #
 # BMP390 based measurements
 class Bmp390Temperature(Meter):
-    def __init__(self, device, state: datastructures.State | None = None):
+    def __init__(self, device, store: datastructures.Store | None = None):
         super().__init__(device)
         self._real_device = device.real_device
-        self._state = state
+        self._store = store
 
     @property
     def measure(self) -> float:
@@ -108,10 +108,10 @@ class Bmp390Temperature(Meter):
         return self._real_device
 
 class Bmp390Pressure(Meter):
-    def __init__(self, device, state: datastructures.State | None = None):
+    def __init__(self, device, store: datastructures.Store | None = None):
         super().__init__(device)
         self._real_device = device.real_device
-        self._state = state
+        self._store = store
 
     @property
     def measure(self) -> float:
@@ -131,16 +131,16 @@ class Bmp390Pressure(Meter):
         return self._real_device
 
 class Bmp390Altitude(Meter):
-    def __init__(self, device, state: datastructures.State | None = None):
+    def __init__(self, device, store: datastructures.Store | None = None):
         super().__init__(device)
         self._real_device = device.real_device
-        self._state = state
+        self._store = store
 
         bmp = self._real_device
         self._default = bmp.sea_level_pressure
         self._key = 'altimeter_calibration'
 
-        self._state.add_key_listener(self._key, self.state_callback)
+        self._store.add_key_listener(self._key, self.store_callback)
 
     @property
     def measure(self) -> float:
@@ -169,7 +169,7 @@ class Bmp390Altitude(Meter):
         bmp = self._real_device
         bmp.sea_level_pressure = msl
 
-    def state_callback(self, key: str, value: typing.Any) -> None:
+    def store_callback(self, key: str, value: typing.Any) -> None:
         if key != 'altimeter_calibration':
             return
 
@@ -184,10 +184,10 @@ class Bmp390Altitude(Meter):
 #
 # SHT41 (SHT4x) measurements
 class Sht41Temperature(Meter):
-    def __init__(self, device, state: datastructures.State | None = None):
+    def __init__(self, device, store: datastructures.Store | None = None):
         super().__init__(device)
         self._real_device = device.real_device
-        self._state = state
+        self._store = store
 
     @property
     def measure(self) -> float:
@@ -208,10 +208,10 @@ class Sht41Temperature(Meter):
         return self._real_device
 
 class Sht41RelativeHumidity(Meter):
-    def __init__(self, device, state: datastructures.State | None = None):
+    def __init__(self, device, store: datastructures.Store | None = None):
         super().__init__(device)
         self._real_device = device.real_device
-        self._state = state
+        self._store = store
 
     @property
     def measure(self) -> float:
@@ -235,10 +235,10 @@ class Sht41RelativeHumidity(Meter):
 #
 # VEML7700 measurements
 class Veml7700AmbientLight(Meter):
-    def __init__(self, device, state: datastructures.State | None = None):
+    def __init__(self, device, store: datastructures.Store | None = None):
         super().__init__(device)
         self._real_device = device.real_device
-        self._state = state
+        self._store = store
 
     @property
     def measure(self) -> float:
@@ -259,10 +259,10 @@ class Veml7700AmbientLight(Meter):
         return self._real_device
 
 class Veml7700Lux(Meter):
-    def __init__(self, device, state: datastructures.State | None = None):
+    def __init__(self, device, store: datastructures.Store | None = None):
         super().__init__(device)
         self._real_device = device.real_device
-        self._state = state
+        self._store = store
 
     @property
     def measure(self) -> float:
@@ -286,10 +286,10 @@ class Veml7700Lux(Meter):
 #
 # SCD41 (SCD4x) measurements
 class Scd41Temperature(Meter):
-    def __init__(self, device, state: datastructures.State | None = None):
+    def __init__(self, device, store: datastructures.Store | None = None):
         super().__init__(device)
         self._real_device = device.real_device
-        self._state = state
+        self._store = store
 
     @property
     def measure(self) -> float:
@@ -310,10 +310,10 @@ class Scd41Temperature(Meter):
         return self._real_device
 
 class Scd41RelativeHumidity(Meter):
-    def __init__(self, device, state: datastructures.State | None = None):
+    def __init__(self, device, store: datastructures.Store | None = None):
         super().__init__(device)
         self._real_device = device.real_device
-        self._state = state
+        self._store = store
 
     @property
     def measure(self) -> float:
@@ -334,10 +334,10 @@ class Scd41RelativeHumidity(Meter):
         return self._real_device
 
 class Scd41CO2(Meter):
-    def __init__(self, device, state: datastructures.State | None = None):
+    def __init__(self, device, store: datastructures.Store | None = None):
         super().__init__(device)
         self._real_device = device.real_device
-        self._state = state
+        self._store = store
 
     @property
     def measure(self) -> int:
@@ -379,13 +379,13 @@ class MeterFactory:
             self._boards[board][measurement] = ctor
 
     def get_meter(self, measurement: int, device: devices.Device,
-                  state: datastructures.State | None = None) -> MeterInterface:
+                  store: datastructures.Store | None = None) -> MeterInterface:
         dev_board = self._boards.get(device.board)
         ctor = dev_board.get(measurement)
         if not ctor:
             raise ValueError('{}:{}'.format(device.board, measurement))
 
-        return ctor(device, state)
+        return ctor(device, store)
 
 meter_factory = MeterFactory()
 meter_factory.register_meter(BMP390, TEMPERATURE, Bmp390Temperature)

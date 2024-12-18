@@ -5,9 +5,11 @@ __all__ = [ 'config',
            'devices',
            'devicetree',
            'meters',
-           'profiles'
+           'profiles',
+           'virtuals',
 ]
 
+from .sensorkit import SensorKit
 from . import config
 from . import constants
 from . import controls
@@ -16,3 +18,4 @@ from . import devices
 from . import devicetree
 from . import meters
 from . import profiles
+from . import virtuals

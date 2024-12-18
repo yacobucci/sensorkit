@@ -1,18 +1,17 @@
 import typing
 
-class State:
-    _state: dict[str, typing.Any]
+class Store:
+    _store: dict[str, typing.Any]
     _listeners: dict[str, list[callable]]
 
     def __init__(self, state: dict[str, typing.Any] | None = None):
         if state is None:
             state = {}
-        super().__setattr__("_state", state)
+        super().__setattr__("_store", state)
         super().__setattr__("_listeners", {})
 
     def __setattr__(self, key: typing.Any, value: typing.Any) -> None:
-        #self._state[key] = value
-        self._state.__setattr__(key, value)
+        self._store.__setattr__(key, value)
 
         if key in self._listeners:
             for h in self._listeners[key]:
@@ -20,13 +19,13 @@ class State:
 
     def __getattr__(self, key: typing.Any) -> typing.Any:
         try:
-            return self._state.__getattr__(key)
+            return self._store.__getattr__(key)
         except (KeyError, AttributeError):
             message = "'{}' object has no attribute '{}'"
             raise AttributeError(message.format(self.__class__.__name__, key))
 
     def __delattr__(self, key: typing.Any) -> None:
-        del self._state[key]
+        del self._store[key]
 
         if key in self._listeners:
             for h in self._listeners[key]:
