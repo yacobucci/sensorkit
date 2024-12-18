@@ -6,7 +6,7 @@ from .mixins import GetterMixin, SchedulableMixin
 from ..datastructures import State
 from ..devices import VirtualDevice
 from ..meters import Meter
-from ..constants import VIRTUAL, PRESSURE, HECTOPASCAL_UNITS
+from ..constants import VIRTUAL, MEAN_SEA_LEVEL_PRESSURE, HECTOPASCAL_UNITS
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +29,7 @@ class OpenMeteoGetter(Meter, GetterMixin, SchedulableMixin):
 
     @property
     def measurement(self) -> int:
-        return PRESSURE
+        return MEAN_SEA_LEVEL_PRESSURE
 
     @property
     def units(self) -> str:
