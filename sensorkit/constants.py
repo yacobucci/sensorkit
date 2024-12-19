@@ -47,7 +47,7 @@ RELATIVE_HUMIDITY       = 0x0020
 AMBIENT_LIGHT           = 0x0040
 LUX                     = 0x0080
 CO2                     = 0x0100
-MEAN_SEA_LEVEL_PRESSURE = 0x0200
+PRESSURE_MSL            = 0x0200
 
 # Capability Strings
 four_channel      = 'four_channel'
@@ -59,7 +59,7 @@ relative_humidity = 'relative_humidity'
 ambient_light     = 'ambient_light'
 lux               = 'lux'
 co2               = 'CO2'
-mean_slp          = 'mean_sea_level_pressure'
+pressure_msl      = 'pressure_msl'
 
 to_capability_strings = dict([
     (FOUR_CHANNEL,            four_channel),
@@ -71,7 +71,7 @@ to_capability_strings = dict([
     (AMBIENT_LIGHT,           ambient_light),
     (LUX,                     lux),
     (CO2,                     co2),
-    (MEAN_SEA_LEVEL_PRESSURE, mean_slp),
+    (PRESSURE_MSL,            pressure_msl),
 ])
 
 to_capabilities = dict({
@@ -84,7 +84,7 @@ to_capabilities = dict({
     ambient_light:     AMBIENT_LIGHT,
     lux:               LUX,
     co2:               CO2,
-    mean_slp:          MEAN_SEA_LEVEL_PRESSURE,
+    pressure_msl:      PRESSURE_MSL,
 })
 
 # Units
