@@ -138,7 +138,7 @@ class Bmp390Altitude(Meter):
 
         bmp = self._real_device
         self._default = bmp.sea_level_pressure
-        self._key = 'altimeter_calibration'
+        self._key = 'pressure_msl'
 
         self._store.add_key_listener(self._key, self.store_callback)
 
@@ -170,7 +170,7 @@ class Bmp390Altitude(Meter):
         bmp.sea_level_pressure = msl
 
     def store_callback(self, key: str, value: typing.Any) -> None:
-        if key != 'altimeter_calibration':
+        if key != 'pressure_msl':
             return
 
         bmp = self._real_device

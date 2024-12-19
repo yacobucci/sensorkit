@@ -45,6 +45,7 @@ def main():
 
     data = load_config(args.config_file)
     config = Config(data)
+    scheduler.start()
 
     try:
         dest = config.log_destination
@@ -67,7 +68,6 @@ def main():
     app = Starlette(debug=True)
 
     kit = SensorKit(board.I2C(), data['sensorkit'], scheduler, app.state)
-
     try:
         encoding = config.metrics_encoding
         labels = config.metrics_labels
@@ -77,8 +77,6 @@ def main():
         app.add_route(endpoint, exporter.export)
     except AttributeError as e:
         logger.info('disabling metrics exporting - %s', e)
-
-    scheduler.start()
 
     host = config.host
     port = config.port
