@@ -78,8 +78,7 @@ class Metadata:
         return bool(self._device_type & constants.DETECTOR)
 
 class DeviceTree:
-    def __init__(self, i2c: I2C, state: datastructures.State):
-        self._state = state
+    def __init__(self, i2c: I2C):
         self._i2c = i2c
 
         self._root = Node(ROOT_NAME, obj=None, metadata=Metadata(ROOT))
@@ -91,25 +90,26 @@ class DeviceTree:
         self._virtual_bus = Node(VIRTUAL_NAME, parent=self._root, obj=None,
                                  metadata=Metadata(constants.BUS | constants.VIRTUAL))
 
-        self._build_tree(self._i2c, self._i2c_bus)
+    def build(self, store: datastructures.Store) -> None:
+        self._build_tree(self._i2c, self._i2c_bus, store)
 
     # Helper to find meters, common use case
-    def meters_iter(self, func = None) -> Iterator[meters.MeterInterface]:
-        if func is not None and not callable(func):
-            raise TypeError('func argument must be callable or None')
+    def meters_iter(self, _filter = None) -> Iterator[meters.MeterInterface]:
+        if _filter is not None and not callable(_filter):
+            raise TypeError('_filter argument must be callable or None')
 
-        def __decorate_filter(func = None):
+        def __decorate_filter(_filter = None):
             def __filter(node: Node) -> bool:
                 meta = getattr(node, 'metadata', None)
                 if meta is not None:
                     is_returnable = meta.is_meter
-                    if is_returnable and func is not None and callable(func):
-                        is_returnable = is_returnable and func(node)
+                    if is_returnable and _filter is not None and callable(_filter):
+                        is_returnable = is_returnable and _filter(node)
                     return is_returnable
                 return False
             return __filter
 
-        for node in PreOrderIter(self._root, __decorate_filter(func)):
+        for node in PreOrderIter(self._root, __decorate_filter(_filter)):
             yield node.obj
 
     def measurement_iter(self, measurement: int) -> Iterator[meters.MeterInterface]:
@@ -135,22 +135,22 @@ class DeviceTree:
         for m in self.meters_iter(__filter):
             yield m
 
-    def devices_iter(self, func = None) -> Iterator[devices.DeviceInterface]:
-        if func is not None and not callable(func):
-            raise TypeError('func argument must be callable or None')
+    def devices_iter(self, _filter = None) -> Iterator[devices.DeviceInterface]:
+        if _filter is not None and not callable(_filter):
+            raise TypeError('_filter argument must be callable or None')
 
-        def __decorate_filter(func = None):
+        def __decorate_filter(_filter = None):
             def __filter(node: Node) -> bool:
                 meta = getattr(node, 'metadata', None)
                 if meta is not None:
                     is_returnable = meta.is_device
-                    if is_returnable and func is not None and callable(func):
-                        is_returnable = is_returnable and func(node)
+                    if is_returnable and _filter is not None and callable(_filter):
+                        is_returnable = is_returnable and _filter(node)
                     return is_returnable
                 return False
             return __filter
 
-        for node in PreOrderIter(self._root, __decorate_filter(func)):
+        for node in PreOrderIter(self._root, __decorate_filter(_filter)):
             yield node.obj
 
     def devices_by_board_iter(self, board: int) -> Iterator[devices.DeviceInterface]:
@@ -165,13 +165,13 @@ class DeviceTree:
             yield d
 
     # General purpose filtered iterator
-    def filtered_iter(self, func: callable) -> Iterator[Any]:
-        def __decorate_filter(func = None):
+    def filtered_iter(self, _filter: callable) -> Iterator[Any]:
+        def __decorate_filter(_filter = None):
             def __filter(node: Node) -> bool:
-                return func(node)
+                return _filter(node)
             return __filter
 
-        for node in PreOrderIter(self._root, __decorate_filter(func)):
+        for node in PreOrderIter(self._root, __decorate_filter(_filter)):
             yield node.obj
 
     # XXX puke, need to add some logging, but keeping the print template for now
@@ -220,7 +220,7 @@ class DeviceTree:
         n = Node(name, parent=self._virtual_bus, obj=obj, metadata=Metadata(typ), **kwargs)
         return n
 
-    def _build_tree(self, i2c, parent, addr_filter: set = set()):
+    def _build_tree(self, i2c, parent, store: datastructures.Store, addr_filter: set = set()):
         try:
             if i2c.try_lock():
                 devs = i2c.scan()
@@ -239,9 +239,9 @@ class DeviceTree:
 
             d = profiles.profiles[addr]
 
-            self._build_node(i2c, addr, d, parent)
+            self._build_node(i2c, addr, d, parent, store)
 
-    def _build_node(self, i2c, address, profile, parent):
+    def _build_node(self, i2c, address, profile, parent, store: datastructures.Store):
         if profile.is_mux():
             logger.info('multiplexer %s found at addr %s, setting up multiple channels',
                         profile.name, hex(address))
@@ -266,19 +266,19 @@ class DeviceTree:
                             metadata=Metadata(constants.CHANNEL))
                 addr_set = set()
                 addr_set.add(mux.address)
-                self._build_tree(channel, chan, addr_set)
+                self._build_tree(channel, chan, store, addr_set)
         else:
             dev = devices.device_factory.get_device(i2c, profile.name, profile.device_id,
                                                     profile.capabilities, address)
             node = Node(address, parent=parent, obj=dev,
                         metadata=Metadata(constants.DEVICE))
-            self._build_leaves(i2c, address, dev, node)
+            self._build_leaves(i2c, address, dev, node, store)
 
-    def _build_leaves(self, i2c, address, device, parent):
+    def _build_leaves(self, i2c, address, device, parent, store: datastructures.Store):
         # XXX only do this for meters, eventually need to discriminate with detectors
         for cap in device.capabilities_gen():
             try:
-                m = meters.meter_factory.get_meter(cap, device, self._state)
+                m = meters.meter_factory.get_meter(cap, device, store)
                 leaf = Node(constants.to_capability_strings[cap], parent=parent, obj=m,
                             metadata=Metadata(constants.METER))
             except ValueError as e:

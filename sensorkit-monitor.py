@@ -1,26 +1,15 @@
 from apscheduler.schedulers.background import BackgroundScheduler
 import argparse
-import asyncio
-from contextlib import asynccontextmanager
 import logging
 import sys
 
 import board
-from busio import I2C
 from starlette.applications import Starlette
-from starlette.responses import JSONResponse
-from starlette.routing import Route
 import uvicorn
 
 from api import metrics
-from sensorkit.config import Config
-from sensorkit import constants
-from sensorkit import controls
-from sensorkit import datastructures
-from sensorkit import devices
-from sensorkit import devicetree
-from sensorkit import meters
-from sensorkit.tools.getters import OpenMeteoGetter
+from config import Config, load_config
+from sensorkit import SensorKit
 
 logger = logging.getLogger(__name__)
 
@@ -39,13 +28,6 @@ def set_log_level(level: str, logger: logging.Logger):
         raise ValueError(level)
 
 scheduler = BackgroundScheduler()
-state = None
-
-params = {
-    'latitude': 39.7592537,
-    'longitude': -105.1230315,
-    'current': 'pressure_msl'
-}
 
 def main():
     parser = argparse.ArgumentParser(description='monitor.py: I2C sensor monitor')
@@ -61,7 +43,8 @@ def main():
     )
     args = parser.parse_args()
 
-    config = Config(args.config_file)
+    data = load_config(args.config_file)
+    config = Config(data)
 
     try:
         dest = config.log_destination
@@ -82,34 +65,8 @@ def main():
         set_log_level(level, logger)
 
     app = Starlette(debug=True)
-    state = datastructures.State(app.state)
 
-    tree = devicetree.DeviceTree(board.I2C(), state)
-    state.tree = tree
-
-    try:
-        interval = config.altimeter_calibration_interval
-
-        logger.debug('getting mean sea level pressure for altimeter calibration')
-
-        # allow for different buses
-        # cleanup virtual device API
-        handler = OpenMeteoGetter(
-                devices.device_factory.get_device(board.I2C(),
-                                                  'open-meteo',
-                                                  constants.VIRTUAL_DEVICE,
-                                                  [ constants.MEAN_SEA_LEVEL_PRESSURE ],
-                                                  constants.VIRTUAL_ADDR),
-                                  state, scheduler)
-        tree.add('open-meteo-msl', handler,
-                 (constants.VIRTUAL | constants.METER))
-        handler.url_get(params)
-        handler.add_schedule('url_get', params, interval)
-
-        logger.debug('calibration pressure stored: %s', state.altimeter_calibration)
-        logger.debug('adding calibration job to scheduler')
-    except AttributeError as e:
-        logger.info('disabling altimeter calibration - %s', e)
+    kit = SensorKit(board.I2C(), data['sensorkit'], scheduler, app.state)
 
     try:
         encoding = config.metrics_encoding

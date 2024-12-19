@@ -11,9 +11,30 @@ app:
     labels:
       room: office
       version: 0.0.1
-sensor-environment:
-  # XXX make this a virtual device to messure mean-sea-level-pressure
-  # after DeviceTree work
-  altimeter-calibration:
-    interval-time: PT10M0S
+sensorkit:
+  virtual-devices:
+    open-meteo:
+      type: meter
+      builder: OpenMeteoBuilder
+      args:
+        interval: PT10M30S
+        params:
+          longitude: -105.1230315
+          latitude: 39.7592537
+          current: pressure_msl
+      post-create:
+        method: start
+        args:
+          immediate: true
+  calibrations:
+    bmp390:
+      measures:
+        - mean_sea_level_pressure
+      #required-source: open-meteo
+      policy: average
+#   scd41:
+#      measures:
+#        - altitude
+#      required-source: bmp390
+#      policy: average
   indoors: true
