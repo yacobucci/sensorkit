@@ -105,7 +105,7 @@ class OpenMeteoCurrentGetterImpl_(GetterMixin, SchedulableMixin):
         for c in self._handlers:
             func = self._handlers[c]
             v = current_values[c] if c not in to_open_meteo else current_values[to_open_meteo[c]]
-            u = current_values[c] if c not in to_open_meteo else current_units[to_open_meteo[c]]
+            u = current_units[c] if c not in to_open_meteo else current_units[to_open_meteo[c]]
             func(c, v, u)
 
 class OpenMeteoCurrent_(Meter, OpenMeteoMixin_):
