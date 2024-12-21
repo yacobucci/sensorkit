@@ -78,8 +78,10 @@ class Metadata:
         return bool(self._device_type & constants.DETECTOR)
 
 class DeviceTree:
-    def __init__(self, i2c: I2C):
+    def __init__(self, i2c: I2C, store: datastructures.Store, env: dict[str, Any] | None = None):
         self._i2c = i2c
+        self._store = store
+        self._env = env
 
         self._root = Node(ROOT_NAME, obj=None, metadata=Metadata(ROOT))
         self._i2c_bus = Node(I2C_NAME, parent=self._root, obj=self._i2c,
@@ -90,8 +92,8 @@ class DeviceTree:
         self._virtual_bus = Node(VIRTUAL_NAME, parent=self._root, obj=None,
                                  metadata=Metadata(constants.BUS | constants.VIRTUAL))
 
-    def build(self, store: datastructures.Store) -> None:
-        self._build_tree(self._i2c, self._i2c_bus, store)
+    def build(self) -> None:
+        self._build_tree(self._i2c, self._i2c_bus, self._store)
 
     # Helper to find meters, common use case
     def meters_iter(self, _filter = None) -> Iterator[meters.MeterInterface]:
@@ -173,6 +175,15 @@ class DeviceTree:
 
         for node in PreOrderIter(self._root, __decorate_filter(_filter)):
             yield node.obj
+
+    # simple wrapper for anytree
+    def findall(self, filter_=None):
+        from anytree import findall as anytree_findall
+        found = anytree_findall(self._root, filter_)
+        objects = list()
+        for f in found:
+            objects.append(f.obj)
+        return objects
 
     # XXX puke, need to add some logging, but keeping the print template for now
     def add(self, name, obj, typ, **kwargs) -> Node:

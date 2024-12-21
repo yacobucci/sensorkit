@@ -12,7 +12,20 @@ app:
       room: office
       version: 0.0.1
 sensorkit:
+  env:
+    indoors: true
   virtual-devices:
+    static-altitude:
+      type: meter
+      module: .virtuals.static
+      builder: StaticBuilder
+      capabilities:
+        - altitude
+      args:
+        values:
+          altitude:
+            value: 1688
+            units: m
     open-meteo-current:
       type: meter
       module: .virtuals.openmeteo
@@ -26,20 +39,38 @@ sensorkit:
         - temperature
         - relative_humidity
       args:
-        interval: PT10M30S
+        interval: PT1M
         params:
           longitude: -105.1230315
           latitude: 39.7592537
           timezone: America/Denver
   calibrations:
     bmp390:
-      measures:
-        - pressure_msl
-      #required-source: open-meteo
-      policy: average
-#   scd41:
-#      measures:
-#        - altitude
-#      required-source: bmp390
-#      policy: average
-  indoors: true
+      - measurement: pressure_msl
+        target:
+          property: sea_level_pressure
+          where: real # or on the object interface 'abstract'
+        source:
+          device: open-meteo-current
+        policy:
+          aggregation: average
+          interval: PT1M
+    scd41:
+      - measurement: altitude
+        target:
+          propery: altitude
+          where: real
+        source:
+          device: static-altitude
+        policy:
+          aggregation: average
+          interval: oneshot
+      - measurement: pressure
+        target:
+          method: set_ambient_pressure
+          where: real
+        source:
+          device: bmp390
+        policy:
+          aggregation: average
+          interval: PT1M

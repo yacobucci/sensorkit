@@ -67,7 +67,6 @@ def main():
 
     app = Starlette(debug=True)
 
-    kit = SensorKit(board.I2C(), data['sensorkit'], scheduler, app.state)
     try:
         encoding = config.metrics_encoding
         labels = config.metrics_labels
@@ -78,6 +77,9 @@ def main():
     except AttributeError as e:
         logger.info('disabling metrics exporting - %s', e)
 
+    kit = SensorKit(board.I2C(), data['sensorkit'], scheduler, app.state)
+    kit.run()
+
     host = config.host
     port = config.port
     config = uvicorn.Config(app, host=host, port=port, log_level='debug')
@@ -85,6 +87,9 @@ def main():
 
     if args.test is False:
         server.run()
+
+    kit.stop()
+    scheduler.shutdown()
 
 if __name__ == '__main__':
     main()

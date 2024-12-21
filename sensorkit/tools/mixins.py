@@ -33,16 +33,33 @@ class GetterMixin(metaclass=abc.ABCMeta):
 class SchedulableMixin(metaclass=abc.ABCMeta):
     @classmethod
     def __subclasshook__(cls, subclass):
-        return (hasattr(subclass, 'start') and
-                callable(subclass.start) and
+        return (hasattr(subclass, 'schedule') and
+                callable(subclass.schedule) and
+                hasattr(subclass, 'unschedule') and
+                callable(subclass.unschedule) or
+                NotImplemented)
+
+    @abc.abstractmethod
+    def schedule(self, immediate: bool) -> None:
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def unschedule(self) -> None:
+        raise NotImplementedError
+
+class RunnableMixin(metaclass=abc.ABCMeta):
+    @classmethod
+    def __subclasshook__(cls, subclass):
+        return (hasattr(subclass, 'run') and
+                callable(subclass.run) and
                 hasattr(subclass, 'stop') and
                 callable(subclass.stop) or
                 NotImplemented)
 
     @abc.abstractmethod
-    def start(self, immediate: bool) -> None:
+    def run(self):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def stop(self) -> None:
+    def stop(self):
         raise NotImplementedError

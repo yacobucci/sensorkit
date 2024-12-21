@@ -13,7 +13,15 @@ class Config:
 
         self._virtual_devices = None
         self._calibrations = None
-        self._indoors = None
+        self._env = None
+
+    @property
+    def env(self) -> dict[str, Any]:
+        if self._env is not None:
+            return self._env
+
+        self._env = self._data.get('env', {})
+        return self._env
 
     @property
     def virtual_devices(self) -> dict[str, dict[str, str]]:

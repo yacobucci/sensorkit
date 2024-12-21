@@ -4,16 +4,16 @@ import logging
 
 from isodate import parse_duration
 
-from ..tools.mixins import GetterMixin, SchedulableMixin
-from ..datastructures import Store
-from ..devices import VirtualDevice
-from ..meters import Meter
 from ..constants import (VIRTUAL_DEVICE,
                          PRESSURE_MSL,
                          TEMPERATURE,
                          RELATIVE_HUMIDITY,
                          to_capabilities,
 )
+from ..datastructures import Store
+from ..devices import VirtualDevice
+from ..meters import Meter
+from ..tools.mixins import GetterMixin, SchedulableMixin
 
 logger = logging.getLogger(__name__)
 
@@ -63,7 +63,7 @@ class OpenMeteoCurrentGetterImpl_(GetterMixin, SchedulableMixin):
         param = [ c if c not in to_open_meteo else to_open_meteo[c] for c in capabilities]
         self._params['current'] = ','.join(param)
 
-    def start(self, immediate: bool) -> None:
+    def schedule(self, immediate: bool) -> None:
         if self._job is not None:
             return
 
@@ -73,7 +73,7 @@ class OpenMeteoCurrentGetterImpl_(GetterMixin, SchedulableMixin):
         self._job = self._scheduler.add_job(self.url_get, 'interval', seconds=self._interval,
                                             kwargs = { 'params': self._params })
 
-    def stop(self) -> None:
+    def unschedule(self) -> None:
         if self._job is None:
             return
 
@@ -167,6 +167,6 @@ class OpenMeteoCurrentBuilder:
             getter_impl.set_handler(cap, obj._handler)
             devs.append(obj)
 
-        getter_impl.start(True)
+        getter_impl.schedule(True)
 
         return devs
