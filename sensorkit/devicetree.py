@@ -78,8 +78,10 @@ class Metadata:
         return bool(self._device_type & constants.DETECTOR)
 
 class DeviceTree:
-    def __init__(self, i2c: I2C):
+    def __init__(self, i2c: I2C, store: datastructures.Store, env: dict[str, Any] | None = None):
         self._i2c = i2c
+        self._store = store
+        self._env = env
 
         self._root = Node(ROOT_NAME, obj=None, metadata=Metadata(ROOT))
         self._i2c_bus = Node(I2C_NAME, parent=self._root, obj=self._i2c,
@@ -90,8 +92,8 @@ class DeviceTree:
         self._virtual_bus = Node(VIRTUAL_NAME, parent=self._root, obj=None,
                                  metadata=Metadata(constants.BUS | constants.VIRTUAL))
 
-    def build(self, store: datastructures.Store) -> None:
-        self._build_tree(self._i2c, self._i2c_bus, store)
+    def build(self) -> None:
+        self._build_tree(self._i2c, self._i2c_bus, self._store, self._env)
 
     # Helper to find meters, common use case
     def meters_iter(self, _filter = None) -> Iterator[meters.MeterInterface]:
@@ -174,6 +176,15 @@ class DeviceTree:
         for node in PreOrderIter(self._root, __decorate_filter(_filter)):
             yield node.obj
 
+    # simple wrapper for anytree
+    def findall(self, filter_=None):
+        from anytree import findall as anytree_findall
+        found = anytree_findall(self._root, filter_)
+        objects = list()
+        for f in found:
+            objects.append(f.obj)
+        return objects
+
     # XXX puke, need to add some logging, but keeping the print template for now
     def add(self, name, obj, typ, **kwargs) -> Node:
         #print('DEBUG {}'.format(type(obj)))
@@ -220,7 +231,8 @@ class DeviceTree:
         n = Node(name, parent=self._virtual_bus, obj=obj, metadata=Metadata(typ), **kwargs)
         return n
 
-    def _build_tree(self, i2c, parent, store: datastructures.Store, addr_filter: set = set()):
+    def _build_tree(self, i2c, parent, store: datastructures.Store,
+                    env: dict[str, Any] | None = None, addr_filter: set = set()):
         try:
             if i2c.try_lock():
                 devs = i2c.scan()
@@ -239,9 +251,10 @@ class DeviceTree:
 
             d = profiles.profiles[addr]
 
-            self._build_node(i2c, addr, d, parent, store)
+            self._build_node(i2c, addr, d, parent, store, env)
 
-    def _build_node(self, i2c, address, profile, parent, store: datastructures.Store):
+    def _build_node(self, i2c, address, profile, parent, store: datastructures.Store,
+                    env: dict[str, Any] | None = None):
         if profile.is_mux():
             logger.info('multiplexer %s found at addr %s, setting up multiple channels',
                         profile.name, hex(address))
@@ -266,10 +279,10 @@ class DeviceTree:
                             metadata=Metadata(constants.CHANNEL))
                 addr_set = set()
                 addr_set.add(mux.address)
-                self._build_tree(channel, chan, store, addr_set)
+                self._build_tree(channel, chan, store, env, addr_set)
         else:
             dev = devices.device_factory.get_device(i2c, profile.name, profile.device_id,
-                                                    profile.capabilities, address)
+                                                    profile.capabilities, address, env)
             node = Node(address, parent=parent, obj=dev,
                         metadata=Metadata(constants.DEVICE))
             self._build_leaves(i2c, address, dev, node, store)
