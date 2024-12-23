@@ -21,7 +21,7 @@ class StaticDevice(Meter):
 
     @property
     def measurement(self) -> int:
-        return to_capability[self._capability]
+        return to_capabilities[self._capability]
     
     @property
     def units(self) -> str:

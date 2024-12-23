@@ -77,7 +77,7 @@ class SensorKit(RunnableMixin):
 
         for node in LevelOrderIter(self._store.tree._root):
             if node.obj is not None and isinstance(node.obj, RunnableMixin):
-                node.obj.run()
+                node.obj.stop()
 
     def _build_calibrations(self, calibrations) -> None:
         for c in calibrations:

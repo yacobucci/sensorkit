@@ -152,6 +152,7 @@ class Scd41(Device, RunnableMixin):
                  address: int = 98, env: dict[str, Any] | None = None):
         super().__init__(bus, name, board, capabilities, address)
         self._scd = adafruit_scd4x.SCD4X(bus, address)
+        self._scd.reinit()
 
         self._env = env
 
@@ -161,7 +162,7 @@ class Scd41(Device, RunnableMixin):
 
     def run(self):
         if 'indoors' in self._env:
-            enable = not indoors
+            enable = not self._env['indoors']
             self._scd.self_calibration_enabled = enable
 
         self._scd.start_periodic_measurement()
