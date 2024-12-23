@@ -51,26 +51,27 @@ sensorkit:
           property: sea_level_pressure
           where: real # or on the object interface 'abstract'
         source:
-          device: open-meteo-current
+          virtual: open-meteo-current
         policy:
           aggregation: average
           interval: PT1M
     scd41:
       - measurement: altitude
         target:
-          propery: altitude
+          property: altitude
           where: real
         source:
-          device: static-altitude
+          virtual: static-altitude
         policy:
-          aggregation: average
+          aggregation: first
           interval: oneshot
       - measurement: pressure
         target:
           method: set_ambient_pressure
           where: real
         source:
-          device: bmp390
+          meter: bmp390
         policy:
           aggregation: average
+          type: int
           interval: PT1M
