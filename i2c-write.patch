@@ -1,0 +1,13 @@
+diff --git a/src/adafruit_blinka/microcontroller/generic_linux/i2c.py b/src/adafruit_blinka/microcontroller/generic_linux/i2c.py
+index b6f2fa3..24eefff 100644
+--- a/src/adafruit_blinka/microcontroller/generic_linux/i2c.py
++++ b/src/adafruit_blinka/microcontroller/generic_linux/i2c.py
+@@ -46,7 +46,7 @@ class I2C:
+         found = []
+         for addr in range(0, 0x80):
+             try:
+-                self._i2c_bus.read_byte(addr)
++                self._i2c_bus.write_quick(addr)
+             except OSError:
+                 continue
+             found.append(addr)
