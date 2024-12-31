@@ -1,16 +1,3 @@
-app:
-  listen:
-    host: 0.0.0.0
-    port: 8000
-  logging:
-    destination: /home/pi/dev/logs/sensorkit-monitor.log
-    log-level: debug
-    format: '%(levelname)s %(asctime)s : %(message)s'
-  metrics:
-    encoding: prometheus
-    labels:
-      room: office
-      version: 0.0.1
 sensorkit:
   env:
     indoors: true
