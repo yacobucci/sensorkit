@@ -46,8 +46,11 @@ ALTITUDE                = 0x0010
 RELATIVE_HUMIDITY       = 0x0020
 AMBIENT_LIGHT           = 0x0040
 LUX                     = 0x0080
-CO2                     = 0x0100
-PRESSURE_MSL            = 0x0200
+VISIBLE                 = 0x0100
+INFRARED                = 0x0200
+FULL_SPECTRUM           = 0x0400
+CO2                     = 0x0800
+PRESSURE_MSL            = 0x1000
 
 # Capability Strings
 four_channel      = 'four_channel'
@@ -58,6 +61,9 @@ altitude          = 'altitude'
 relative_humidity = 'relative_humidity'
 ambient_light     = 'ambient_light'
 lux               = 'lux'
+visible           = 'visible'
+infrared          = 'infrared'
+full_spectrum     = 'full_spectrum'
 co2               = 'CO2'
 pressure_msl      = 'pressure_msl'
 
@@ -70,22 +76,15 @@ to_capability_strings = dict([
     (RELATIVE_HUMIDITY,       relative_humidity),
     (AMBIENT_LIGHT,           ambient_light),
     (LUX,                     lux),
+    (VISIBLE,                 visible),
+    (INFRARED,                infrared), 
+    (FULL_SPECTRUM,           full_spectrum),
     (CO2,                     co2),
     (PRESSURE_MSL,            pressure_msl),
 ])
 
-to_capabilities = dict({
-    four_channel:      FOUR_CHANNEL,
-    eight_channel:     EIGHT_CHANNEL,
-    pressure:          PRESSURE,
-    temperature:       TEMPERATURE,
-    altitude:          ALTITUDE,
-    relative_humidity: RELATIVE_HUMIDITY,
-    ambient_light:     AMBIENT_LIGHT,
-    lux:               LUX,
-    co2:               CO2,
-    pressure_msl:      PRESSURE_MSL,
-})
+to_capabilities = {dest: [k for k, v in to_capability_strings.items() if v == dest] \
+    for dest in set(to_capability_strings.values())}
 
 # Units
 CELSIUS_UNITS                = 'Celsius (C)'
@@ -105,6 +104,7 @@ BMP390         = 0x0003
 SHT41          = 0x0004
 VEML7700       = 0x0005
 SCD41          = 0x0006
+TSL2591        = 0x0007
 
 to_device_ids = dict({
     'virtual':  VIRTUAL_DEVICE,
@@ -114,5 +114,6 @@ to_device_ids = dict({
     'bmp390':   BMP390,
     'sht41':    SHT41,
     'veml7700': VEML7700,
-    'scd41':    SCD41
+    'scd41':    SCD41,
+    'tsl2591':  TSL2591,
 })

@@ -249,9 +249,12 @@ class DeviceTree:
         for addr in devs:
             logger.info('building node for address: %s', addr)
 
-            d = profiles.profiles[addr]
+            try:
+                d = profiles.profiles[addr]
 
-            self._build_node(i2c, addr, d, parent, store, env)
+                self._build_node(i2c, addr, d, parent, store, env)
+            except KeyError as e:
+                logger.warning('bus scan reports unsupported address {}, continuing...'.format(e))
 
     def _build_node(self, i2c, address, profile, parent, store: datastructures.Store,
                     env: dict[str, Any] | None = None):
@@ -296,4 +299,4 @@ class DeviceTree:
                             metadata=Metadata(constants.METER))
             except ValueError as e:
                 logger.warning('name %s, board %s, capability %s - no ctor',
-                               profile.name, profile.device_id, cap)
+                               device.name, device.board, constants.to_capability_strings[cap])

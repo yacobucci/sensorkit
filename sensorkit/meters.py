@@ -6,25 +6,7 @@ from busio import I2C
 
 from . import datastructures
 from . import devices
-from .constants import (TEMPERATURE,
-                        PRESSURE,
-                        ALTITUDE,
-                        RELATIVE_HUMIDITY,
-                        CO2,
-                        LUX,
-                        AMBIENT_LIGHT,
-                        CELSIUS_UNITS,
-                        HECTOPASCAL_UNITS,
-                        METER_UNITS,
-                        PERC_RELATIVE_HUMIDITY_UNITS,
-                        AMBIENT_LIGHT_UNITS,
-                        LUX_UNITS,
-                        PPM_UNITS,
-                        BMP390,
-                        SHT41,
-                        VEML7700,
-                        SCD41,
-)
+from .constants import *
 
 class MeterInterface(devices.DeviceInterface, metaclass=abc.ABCMeta):
     @classmethod
@@ -331,6 +313,105 @@ class Scd41CO2(Meter):
         return self._real_device
 # END SCD41 (SCD4x)
 
+#
+# TSL2591 measurements
+class Tsl2591Lux(Meter):
+    def __init__(self, device, store: datastructures.Store | None = None):
+        super().__init__(device)
+        self._real_device = device.real_device
+        self._store = store
+
+    @property
+    def measure(self) -> float:
+        tsl2591 = self._real_device
+        l = tsl2591.lux
+        return l
+
+    @property
+    def measurement(self) -> int:
+        return LUX
+
+    @property
+    def units(self) -> str:
+        return LUX_UNITS
+
+    @property
+    def real_device(self):
+        return self._real_device
+
+class Tsl2591Infrared(Meter):
+    def __init__(self, device, store: datastructures.Store | None = None):
+        super().__init__(device)
+        self._real_device = device.real_device
+        self._store = store
+
+    @property
+    def measure(self) -> float:
+        tsl2591 = self._real_device
+        l = tsl2591.infrared
+        return l
+
+    @property
+    def measurement(self) -> int:
+        return INFRARED
+
+    @property
+    def units(self) -> str:
+        return AMBIENT_LIGHT_UNITS
+
+    @property
+    def real_device(self):
+        return self._real_device
+
+class Tsl2591Visible(Meter):
+    def __init__(self, device, store: datastructures.Store | None = None):
+        super().__init__(device)
+        self._real_device = device.real_device
+        self._store = store
+
+    @property
+    def measure(self) -> float:
+        tsl2591 = self._real_device
+        l = tsl2591.visible
+        return l
+
+    @property
+    def measurement(self) -> int:
+        return VISIBLE
+
+    @property
+    def units(self) -> str:
+        return AMBIENT_LIGHT_UNITS
+
+    @property
+    def real_device(self):
+        return self._real_device
+
+class Tsl2591FullSpectrum(Meter):
+    def __init__(self, device, store: datastructures.Store | None = None):
+        super().__init__(device)
+        self._real_device = device.real_device
+        self._store = store
+
+    @property
+    def measure(self) -> float:
+        tsl2591 = self._real_device
+        l = tsl2591.full_spectrum
+        return l
+
+    @property
+    def measurement(self) -> int:
+        return FULL_SPECTRUM
+
+    @property
+    def units(self) -> str:
+        return AMBIENT_LIGHT_UNITS
+
+    @property
+    def real_device(self):
+        return self._real_device
+# END TSL2591
+
 class MeterFactory:
     def __init__(self):
         self._boards = {}
@@ -371,3 +452,7 @@ meter_factory.register_meter(VEML7700, LUX, Veml7700Lux)
 meter_factory.register_meter(SCD41, TEMPERATURE, Scd41Temperature)
 meter_factory.register_meter(SCD41, RELATIVE_HUMIDITY, Scd41RelativeHumidity)
 meter_factory.register_meter(SCD41, CO2, Scd41CO2)
+meter_factory.register_meter(TSL2591, LUX, Tsl2591Lux)
+meter_factory.register_meter(TSL2591, INFRARED, Tsl2591Infrared)
+meter_factory.register_meter(TSL2591, VISIBLE, Tsl2591Visible)
+meter_factory.register_meter(TSL2591, FULL_SPECTRUM, Tsl2591FullSpectrum)

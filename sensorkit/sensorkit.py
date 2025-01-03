@@ -49,6 +49,10 @@ class SensorKit(RunnableMixin):
         calibrations = self._config.calibrations
         self._build_calibrations(calibrations)
 
+    @property
+    def tree(self) -> DeviceTree:
+        return self._store.tree
+
     def run(self):
         # Order:
         #   Pre:
