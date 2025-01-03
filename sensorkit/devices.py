@@ -5,6 +5,7 @@ from typing import Any
 import adafruit_bmp3xx
 import adafruit_scd4x
 import adafruit_sht4x
+import adafruit_tsl2591
 import adafruit_veml7700
 from busio import I2C
 
@@ -121,54 +122,64 @@ class Bmp390(Device):
     def __init__(self, bus: I2C, name: str, board: int, capabilities: list[int],
                  address: int = 119, env: dict[str, Any] | None = None):
         super().__init__(bus, name, board, capabilities, address)
-        self._bmp = adafruit_bmp3xx.BMP3XX_I2C(bus, address)
+        self._dev = adafruit_bmp3xx.BMP3XX_I2C(bus, address)
 
     @property
     def real_device(self):
-        return self._bmp
+        return self._dev
 
 class Sht41(Device):
     def __init__(self, bus: I2C, name: str, board: int, capabilities: list[int],
                  address: int = 68, env: dict[str, Any] | None = None):
         super().__init__(bus, name, board, capabilities, address)
-        self._sht = adafruit_sht4x.SHT4x(bus, address)
+        self._dev = adafruit_sht4x.SHT4x(bus, address)
 
     @property
     def real_device(self):
-        return self._sht
+        return self._dev
 
 class Veml7700(Device):
     def __init__(self, bus: I2C, name: str, board: int, capabilities: list[int],
                  address: int = 16, env: dict[str, Any] | None = None):
         super().__init__(bus, name, board, capabilities, address)
-        self._veml7700 = adafruit_veml7700.VEML7700(bus, address)
+        self._dev = adafruit_veml7700.VEML7700(bus, address)
 
     @property
     def real_device(self):
-        return self._veml7700
+        return self._dev
 
 class Scd41(Device, RunnableMixin):
     def __init__(self, bus: I2C, name: str, board: int, capabilities: list[int],
                  address: int = 98, env: dict[str, Any] | None = None):
         super().__init__(bus, name, board, capabilities, address)
-        self._scd = adafruit_scd4x.SCD4X(bus, address)
-        self._scd.reinit()
+        self._dev = adafruit_scd4x.SCD4X(bus, address)
+        self._dev.reinit()
 
         self._env = env
 
     @property
     def real_device(self):
-        return self._scd
+        return self._dev
 
     def run(self):
         if 'indoors' in self._env:
             enable = not self._env['indoors']
-            self._scd.self_calibration_enabled = enable
+            self._dev.self_calibration_enabled = enable
 
-        self._scd.start_periodic_measurement()
+        self._dev.start_periodic_measurement()
 
     def stop(self):
-        self._scd.stop_periodic_measurement()
+        self._dev.stop_periodic_measurement()
+
+class Tsl2591(Device):
+    def __init__(self, bus: I2C, name: str, board: int, capabilities: list[int],
+                 address: int = 41, env: dict[str, Any] | None = None):
+        super().__init__(bus, name, board, capabilities, address)
+        self._dev = adafruit_tsl2591.TSL2591(bus, address)
+
+    @property
+    def real_device(self):
+        return self._dev
 
 class DeviceFactory:
     def __init__(self):
@@ -190,3 +201,4 @@ device_factory.register_device(constants.BMP390, Bmp390)
 device_factory.register_device(constants.SHT41, Sht41)
 device_factory.register_device(constants.VEML7700, Veml7700)
 device_factory.register_device(constants.SCD41, Scd41)
+device_factory.register_device(constants.TSL2591, Tsl2591)

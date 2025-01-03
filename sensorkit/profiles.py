@@ -1,7 +1,6 @@
 from .constants import *
 
 # Device profiles
-# XXX can capabilities be AND and OR at some point?
 class DeviceProfile:
     def __init__(self, name: str, address: int, device_id: int, capabilities: list[int],
                  typ: int, interface: int = ADAFRUIT):
@@ -45,15 +44,18 @@ class DeviceProfile:
 
 pca9546a = DeviceProfile('PCA9546A', 0x70, PCA9546A, [ FOUR_CHANNEL ], MUX)
 tca9548a = DeviceProfile('TCA9548A', 0x70, TCA9548A, [ EIGHT_CHANNEL ], MUX)
-bmp390 = DeviceProfile('BMP390', 0x77, BMP390, [ PRESSURE, TEMPERATURE, ALTITUDE ], METER)
-sht41 = DeviceProfile('SHT41', 0x44, SHT41, [ TEMPERATURE, RELATIVE_HUMIDITY ], METER)
+bmp390   = DeviceProfile('BMP390', 0x77, BMP390, [ PRESSURE, TEMPERATURE, ALTITUDE ], METER)
+sht41    = DeviceProfile('SHT41', 0x44, SHT41, [ TEMPERATURE, RELATIVE_HUMIDITY ], METER)
 veml7700 = DeviceProfile('VEML7700', 0x10, VEML7700, [ AMBIENT_LIGHT, LUX ], METER)
-scd41 = DeviceProfile('SCD41', 0x62, SCD41, [ CO2, RELATIVE_HUMIDITY, TEMPERATURE ], METER)
+scd41    = DeviceProfile('SCD41', 0x62, SCD41, [ CO2, RELATIVE_HUMIDITY, TEMPERATURE ], METER)
+tsl2591  = DeviceProfile('TSL2591', 0x29, TSL2591,
+                         [ LUX, FULL_SPECTRUM, VISIBLE, INFRARED, AMBIENT_LIGHT ], METER)
 
 profiles = dict([
     (0x70, pca9546a),
     (0x77, bmp390),
     (0x44, sht41),
     (0x10, veml7700),
-    (0x62, scd41)
+    (0x62, scd41),
+    (0x29, tsl2591),
 ])
