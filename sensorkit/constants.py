@@ -83,8 +83,7 @@ to_capability_strings = dict([
     (PRESSURE_MSL,            pressure_msl),
 ])
 
-to_capabilities = {dest: [k for k, v in to_capability_strings.items() if v == dest] \
-    for dest in set(to_capability_strings.values())}
+to_capabilities = {v: k for k, v in to_capability_strings.items()}
 
 # Units
 CELSIUS_UNITS                = 'Celsius (C)'
