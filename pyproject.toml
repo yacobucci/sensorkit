@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "sensorkit"
-version = "0.2.0"
+version = "0.2.1"
 description = "Simple utilities for generically using GPIO/I2C RPI sensors."
 authors = ["Matthew Yacobucci <yacobucci@gmail.com>"]
 license = "MIT"
