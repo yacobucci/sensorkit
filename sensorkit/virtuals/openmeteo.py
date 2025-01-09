@@ -17,9 +17,6 @@ from ..tools.mixins import GetterMixin, SchedulableMixin
 
 logger = logging.getLogger(__name__)
 
-# XXX how to set this properly?
-logger.setLevel(logging.DEBUG)
-
 to_open_meteo = dict({
     'temperature': 'temperature_2m',
     'relative_humidity': 'relative_humidity_2m',

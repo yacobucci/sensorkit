@@ -1,3 +1,4 @@
+import logging
 from typing import Any
 
 from ..constants import (VIRTUAL_DEVICE,
@@ -6,6 +7,8 @@ from ..constants import (VIRTUAL_DEVICE,
 from ..datastructures import Store
 from ..devices import VirtualDevice
 from ..meters import Meter
+
+logger = logging.getLogger(__name__)
 
 class StaticDevice(Meter):
     def __init__(self, capability: str, value: Any, units: str):

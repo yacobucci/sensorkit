@@ -1,5 +1,6 @@
 import abc
 from collections.abc import Iterator
+import logging
 import typing
 
 from busio import I2C
@@ -7,6 +8,8 @@ from busio import I2C
 from . import datastructures
 from . import devices
 from .constants import *
+
+logger = logging.getLogger(__name__)
 
 class MeterInterface(devices.DeviceInterface, metaclass=abc.ABCMeta):
     @classmethod

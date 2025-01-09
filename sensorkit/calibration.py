@@ -10,7 +10,6 @@ from .constants import (
 from .tools.mixins import SchedulableMixin
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
 
 class Calibration(SchedulableMixin):
     def __init__(self, target, conf_dict, target_obj, store, scheduler):

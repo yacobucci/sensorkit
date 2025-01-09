@@ -18,9 +18,9 @@ logger = logging.getLogger(__name__)
 
 ROOT = constants.NONE
 
-ROOT_NAME      = 'root'
-VIRTUAL_NAME   = 'virtual-bus'
-I2C_NAME       = 'i2c-bus'
+ROOT_NAME    = 'root'
+VIRTUAL_NAME = 'virtual-bus'
+I2C_NAME     = 'i2c-bus'
 
 class Metadata:
     def __init__(self, device_type: int):
@@ -240,21 +240,22 @@ class DeviceTree:
         except AttributeError:
             devs = i2c.scan()
 
-        logger.debug('initial scan results: %s',
+        logger.debug('initial scan results: %s, applying filter: %s',
                      [hex(n) for n in devs],
                      [hex(n) for n in addr_filter])
 
         devs = [n for n in devs if n not in addr_filter]
 
         for addr in devs:
-            logger.info('building node for address: %s', addr)
+            logger.info('building node for address: %s', hex(addr))
 
             try:
                 d = profiles.profiles[addr]
 
                 self._build_node(i2c, addr, d, parent, store, env)
             except KeyError as e:
-                logger.warning('bus scan reports unsupported address {}, continuing...'.format(e))
+                message = 'bus scan reports unsupported address {}, continuing...'.format(hex(addr))
+                logger.warning(message)
 
     def _build_node(self, i2c, address, profile, parent, store: datastructures.Store,
                     env: dict[str, Any] | None = None):
