@@ -35,7 +35,7 @@ six = "^1.17.0"
 sysv-ipc = "^1.1.0"
 typing-extensions = "^4.12.2"
 tzlocal = "^5.2"
-adafruit-circuitpython-tsl2591 = "^1.3.13"
+adafruit-circuitpython-tsl2591 = {git = "git@github.com:yacobucci/Adafruit_CircuitPython_TSL2591.git", rev = "interrupts"}
 
 [tool.poetry.group.dev.dependencies]
 build = "^1.2.2.post1"
