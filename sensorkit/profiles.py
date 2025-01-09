@@ -1,4 +1,8 @@
+import logging
+
 from .constants import *
+
+logger = logging.getLogger(__name__)
 
 # Device profiles
 class DeviceProfile:

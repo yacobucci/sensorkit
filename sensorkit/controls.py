@@ -1,6 +1,9 @@
 import abc
 from collections.abc import Iterator
+import logging
 from typing import Literal
+
+logger = logging.getLogger(__name__)
 
 import board
 from busio import I2C

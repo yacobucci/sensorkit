@@ -1,7 +1,10 @@
 from typing import Any
+import logging
 import os.path
 
 import yaml
+
+logger = logging.getLogger(__name__)
 
 class Config:
     def __init__(self, config: dict[str, Any]):

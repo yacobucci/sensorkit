@@ -1,5 +1,6 @@
 import abc
 from collections.abc import Iterator
+import logging
 from typing import Any
 
 import adafruit_bmp3xx
@@ -12,6 +13,8 @@ from busio import I2C
 from . import constants
 from . import profiles
 from .tools.mixins import RunnableMixin
+
+logger = logging.getLogger(__name__)
 
 class DeviceInterface(metaclass=abc.ABCMeta):
     @classmethod

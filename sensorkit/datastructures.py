@@ -1,4 +1,7 @@
+import logging
 import typing
+
+logger = logging.getLogger(__name__)
 
 class Store:
     _store: dict[str, typing.Any]
