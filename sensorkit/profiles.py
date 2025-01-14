@@ -1,65 +1,47 @@
+from dataclasses import dataclass
 import logging
 
+import littletable as db
+
 from .constants import *
+from .datastructures import UniqueRecordByWhere
 
 logger = logging.getLogger(__name__)
 
 # Device profiles
+@dataclass
 class DeviceProfile:
-    def __init__(self, name: str, address: int, device_id: int, capabilities: list[int],
-                 typ: int, interface: int = ADAFRUIT):
-        self._name = name
-        self._address = address
-        self._dev_id = device_id
-        self._caps = capabilities
-        self._type = typ
-    
-    @property
-    def address(self) -> int:
-        return self._address
-
-    @property
-    def capabilities(self) -> list[int]:
-        return self._caps
-
-    @property
-    def name(self) -> str:
-        return self._name
-
-    @property
-    def device_id(self) -> int:
-        return self._dev_id
-
-    @property
-    def typ(self) -> int:
-        return self._type
+    name: str
+    address: int
+    device_id: int
+    capabilities: list[int]
+    typ: int
+    interface: int = ADAFRUIT
 
     def is_mux(self) -> bool:
-        return True if self._type == MUX else False
+        return True if self.typ == MUX else False
 
     def is_meter(self) -> bool:
-        return True if self._type == METER else False
+        return True if self.typ == METER else False
 
     def is_detector(self) -> bool:
-        return True if self._type == DETECTOR else False
+        return True if self.typ == DETECTOR else False
 
     def has_capability(self, cap: int) -> bool:
-        return True if cap in self._caps else False
+        return True if cap in self.capabilities else False
 
-pca9546a = DeviceProfile('PCA9546A', 0x70, PCA9546A, [ FOUR_CHANNEL ], MUX)
-tca9548a = DeviceProfile('TCA9548A', 0x70, TCA9548A, [ EIGHT_CHANNEL ], MUX)
-bmp390   = DeviceProfile('BMP390', 0x77, BMP390, [ PRESSURE, TEMPERATURE, ALTITUDE ], METER)
-sht41    = DeviceProfile('SHT41', 0x44, SHT41, [ TEMPERATURE, RELATIVE_HUMIDITY ], METER)
-veml7700 = DeviceProfile('VEML7700', 0x10, VEML7700, [ AMBIENT_LIGHT, LUX ], METER)
-scd41    = DeviceProfile('SCD41', 0x62, SCD41, [ CO2, RELATIVE_HUMIDITY, TEMPERATURE ], METER)
-tsl2591  = DeviceProfile('TSL2591', 0x29, TSL2591,
-                         [ LUX, FULL_SPECTRUM, VISIBLE, INFRARED, AMBIENT_LIGHT ], METER)
+profiles = db.Table('profiles')
+profiles.insert(DeviceProfile('PCA9546A', 0x70, PCA9546A, [ FOUR_CHANNEL ], MUX))
+# FIXME need discovery discrimination before this will work
+#profiles.insert(DeviceProfile('TCA9548A', 0x70, TCA9548A, [ EIGHT_CHANNEL ], MUX))
+profiles.insert(DeviceProfile('BMP390', 0x77, BMP390, [ PRESSURE, TEMPERATURE, ALTITUDE ], METER))
+profiles.insert(DeviceProfile('SHT41', 0x44, SHT41, [ TEMPERATURE, RELATIVE_HUMIDITY ], METER))
+profiles.insert(DeviceProfile('VEML7700', 0x10, VEML7700, [ AMBIENT_LIGHT, LUX ], METER))
+profiles.insert(DeviceProfile('SCD41', 0x62, SCD41, [ CO2, RELATIVE_HUMIDITY, TEMPERATURE ], METER))
+profiles.insert(DeviceProfile('TSL2591', 0x29, TSL2591,
+                              [ LUX, FULL_SPECTRUM, VISIBLE, INFRARED, AMBIENT_LIGHT ], METER))
 
-profiles = dict([
-    (0x70, pca9546a),
-    (0x77, bmp390),
-    (0x44, sht41),
-    (0x10, veml7700),
-    (0x62, scd41),
-    (0x29, tsl2591),
-])
+profiles.create_index('name')
+profiles.create_index('address')
+profiles.create_index('device_id')
+profile_selector = UniqueRecordByWhere(profiles)

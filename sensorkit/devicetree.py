@@ -250,11 +250,16 @@ class DeviceTree:
             logger.info('building node for address: %s', hex(addr))
 
             try:
-                d = profiles.profiles[addr]
+                record = profiles.profile_selector(address=addr)
+                if record.found is False:
+                    message = 'bus scan reports unsupported address {}, continuing...'.format(
+                        hex(addr))
+                    logger.warning(message)
+                    continue
 
-                self._build_node(i2c, addr, d, parent, store, env)
-            except KeyError as e:
-                message = 'bus scan reports unsupported address {}, continuing...'.format(hex(addr))
+                self._build_node(i2c, addr, record.record, parent, store, env)
+            except Exception as e:
+                message = 'bus scan raised exception, {}'.format(e)
                 logger.warning(message)
 
     def _build_node(self, i2c, address, profile, parent, store: datastructures.Store,
@@ -296,8 +301,9 @@ class DeviceTree:
         for cap in device.capabilities_gen():
             try:
                 m = meters.meter_factory.get_meter(cap, device, store)
-                leaf = Node(constants.to_capability_strings[cap], parent=parent, obj=m,
+                capstr = datastructures.capabilities_selector('capability', id=cap)
+                leaf = Node(capstr.field, parent=parent, obj=m,
                             metadata=Metadata(constants.METER))
             except ValueError as e:
                 logger.warning('name %s, board %s, capability %s - no ctor',
-                               device.name, device.board, constants.to_capability_strings[cap])
+                               device.name, device.board, capstr.field)

@@ -3,9 +3,8 @@ import logging
 
 from isodate import parse_duration
 
-from .constants import (
-        to_capabilities,
-        to_device_ids,
+from .datastructures import (capabilities_selector,
+                             deviceids_selector,
 )
 from .tools.mixins import SchedulableMixin
 
@@ -43,8 +42,11 @@ class Calibration(SchedulableMixin):
         if 'meter' in source:
             def __filter(node):
                 meta = getattr(node, 'metadata', None)
-                if meta is not None and meta.is_meter and to_device_ids[source['meter']] == node.obj.board:
-                    if to_capabilities[measurement] == node.obj.measurement:
+                devid = deviceids_selector('id', source['meter'])
+                if ((meta is not None and meta.is_meter) and
+                    (devid.found is True and devid.field == node.obj.board)):
+                    field = capabilities_selector('id', capability=measurement)
+                    if field.found and field.field == node.obj.measurement:
                         return True
                 return False
             func = __filter
@@ -52,7 +54,8 @@ class Calibration(SchedulableMixin):
             def __filter(node):
                 meta = getattr(node, 'metadata', None)
                 if meta is not None and meta.is_virtual and source['virtual'] == node.name:
-                    if to_capabilities[measurement] == node.obj.measurement:
+                    field = capabilities_selector('id', capability=measurement)
+                    if field.found and field.field == node.obj.measurement:
                         return True
                 return False
             func = __filter
@@ -60,7 +63,8 @@ class Calibration(SchedulableMixin):
             def __filter(node):
                 meta = getattr(node, 'metadata', None)
                 if meta is not None and meta.is_meter:
-                    if to_capabilities[measurement] == node.obj.measurement:
+                    field = capabilities_selector('id', capability=measurement)
+                    if field.found and field.field == node.obj.measurement:
                         return True
                 return False
             func = __filter
