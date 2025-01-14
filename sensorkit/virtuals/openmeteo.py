@@ -1,35 +1,37 @@
 import abc
 import json
 import logging
+from typing import Any
 
 from isodate import parse_duration
+import littletable as db
 
 from ..constants import (VIRTUAL_DEVICE,
                          PRESSURE_MSL,
                          TEMPERATURE,
                          RELATIVE_HUMIDITY,
-                         to_capabilities,
 )
-from ..datastructures import Store
+from ..datastructures import (UniqueRecordFieldByWhere,
+                              capabilities_selector,
+                              Store, # XXX will be removed
+)
 from ..devices import VirtualDevice
 from ..meters import Meter
 from ..tools.mixins import GetterMixin, SchedulableMixin
 
 logger = logging.getLogger(__name__)
 
-to_open_meteo = dict({
-    'temperature': 'temperature_2m',
-    'relative_humidity': 'relative_humidity_2m',
-})
-from_open_meteo = { v:k for k,v in zip(to_open_meteo.keys(), to_open_meteo.values()) }
+open_meteo_data = f"""\
+id,capability,open_meteo_capability
+{TEMPERATURE},temperature,temperature_2m
+{RELATIVE_HUMIDITY},relative_humidity,relative_humidity_2m"""
 
-open_meteo_measures = dict({
-    'temperature_2m': TEMPERATURE,
-    'relative_humidity_2m': RELATIVE_HUMIDITY,
-})
-open_meteo_measures = { **open_meteo_measures, **to_capabilities }
+open_meteo = db.Table('open_meteo')
+open_meteo.csv_import(open_meteo_data, transforms={"id": int})
 
-class OpenMeteoMixin_(metaclass=abc.ABCMeta):
+fields = UniqueRecordFieldByWhere(open_meteo)
+
+class _OpenMeteoMixin(metaclass=abc.ABCMeta):
     @classmethod
     def __subclasshook__(cls, subclass):
         return (hasattr(subclass, '_handler') and
@@ -40,10 +42,10 @@ class OpenMeteoMixin_(metaclass=abc.ABCMeta):
     def _handler(self) -> None:
         raise NotImplementedError
 
-class OpenMeteoCurrentGetterImpl_(GetterMixin, SchedulableMixin):
+class _OpenMeteoCurrentGetterImpl(GetterMixin, SchedulableMixin):
     def __new__(cls, *args, **kwargs):
         if not hasattr(cls, '_instance'):
-            cls._instance = super(OpenMeteoCurrentGetterImpl_, cls).__new__(cls)
+            cls._instance = super(_OpenMeteoCurrentGetterImpl, cls).__new__(cls)
         return cls._instance
     
     def __init__(self, capabilities: list[str], interval: str, params: dict[str, int | str],
@@ -57,7 +59,8 @@ class OpenMeteoCurrentGetterImpl_(GetterMixin, SchedulableMixin):
         self._scheduler = scheduler
         self._job = None
 
-        param = [ c if c not in to_open_meteo else to_open_meteo[c] for c in capabilities]
+        param = [ c if not fields('open_meteo_capability', capability=c).found else \
+                fields('open_meteo_capability', capability=c).field for c in capabilities ]
         self._params['current'] = ','.join(param)
 
     def schedule(self, immediate: bool) -> None:
@@ -101,35 +104,37 @@ class OpenMeteoCurrentGetterImpl_(GetterMixin, SchedulableMixin):
 
         for c in self._handlers:
             func = self._handlers[c]
-            v = current_values[c] if c not in to_open_meteo else current_values[to_open_meteo[c]]
-            u = current_units[c] if c not in to_open_meteo else current_units[to_open_meteo[c]]
+            om_cap = fields('open_meteo_capability', capability=c)
+            v = current_values[c] if not om_cap.found else current_values[om_cap.field]
+            u = current_units[c] if not om_cap.found  else current_units[om_cap.field]
             func(c, v, u)
 
-class OpenMeteoCurrent_(Meter, OpenMeteoMixin_):
+class _OpenMeteoCurrent(Meter, _OpenMeteoMixin):
     def __init__(self, capability: str, interval: str,
                  params: dict[str, int | str], store: Store,
                  scheduler, device: VirtualDevice | None = None):
+        self._id = capabilities_selector('id', capability=capability).field 
         if device is None:
             super().__init__(VirtualDevice(None, 'open-meteo', VIRTUAL_DEVICE,
-                                           [ open_meteo_measures[capability] ]))
+                                           [ self._id ]))
         else:
             super().__init__(device)
 
         self._capability = capability
-        self._store = store
+        self._measure = 0.0
+        self._units = None
 
     @property
     def measure(self) -> float:
-        return getattr(self._store, self._capability)
+        return self._measure
 
     @property
     def measurement(self) -> int:
-        return open_meteo_measures[self._capability] 
+        return self._id
 
     @property
     def units(self) -> str:
-        units_key = self._capability + '_units'
-        return getattr(self._store, units_key)
+        return self._units
 
     @property
     def real_device(self):
@@ -144,23 +149,23 @@ class OpenMeteoCurrent_(Meter, OpenMeteoMixin_):
             logger.warning(msg, capability, self._capability)
             return
 
-        setattr(self._store, capability, value)
-        setattr(self._store, capability + '_units', units)
+        self._measure = value
+        self._units = units
 
 class OpenMeteoCurrentBuilder:
     def __init__(self, capabilities: list[str]):
         self._caps = capabilities
 
     def __call__(self, interval: str, params: dict[str, int | str], store: Store,
-                 scheduler, **_ignored) -> list[OpenMeteoCurrent_ | OpenMeteoCurrentGetterImpl_]:
+                 scheduler, **_ignored) -> list[_OpenMeteoCurrent | _OpenMeteoCurrentGetterImpl]:
         # the builder knows what this is, put your smarts here when building other layered
         # virtual devices
 
-        getter_impl = OpenMeteoCurrentGetterImpl_(self._caps, interval, params, store, scheduler)
+        getter_impl = _OpenMeteoCurrentGetterImpl(self._caps, interval, params, store, scheduler)
 
         devs = []
         for cap in self._caps:
-            obj = OpenMeteoCurrent_(cap, interval, params, store, scheduler)
+            obj = _OpenMeteoCurrent(cap, interval, params, store, scheduler)
             getter_impl.set_handler(cap, obj._handler)
             devs.append(obj)
 

@@ -10,10 +10,6 @@ class Config:
     def __init__(self, config: dict[str, Any]):
         self._data = config
 
-        self._metrics_endpoint = None
-        self._metrics_encoding = None
-        self._metrics_labels = None
-
         self._virtual_devices = None
         self._calibrations = None
         self._env = None

@@ -7,11 +7,11 @@ from busio import I2C
 
 from .calibration import Calibration
 from .config import Config
-from .constants import (to_device_type,
-                        to_device_ids,
-                        VIRTUAL,
+from .constants import VIRTUAL
+from .datastructures import (devicetypes_selector,
+                             deviceids_selector,
+                             Store,
 )
-from .datastructures import Store
 from .devices import device_factory, DeviceInterface
 from .devicetree import DeviceTree
 from .tools.mixins import RunnableMixin, SchedulableMixin
@@ -44,7 +44,12 @@ class SensorKit(RunnableMixin):
             objs = self._instantiate_device(conf)
 
             for d in objs:
-                self._store.tree.add(dev, d, (to_device_type[conf['type']] | VIRTUAL))
+                field = devicetypes_selector('type', device=conf['type'])
+                if field.found is False:
+                    logger.warning('skipping unknown device: %s', conf['type'])
+                    continue
+
+                self._store.tree.add(dev, d, (field.field | VIRTUAL))
 
         calibrations = self._config.calibrations
         self._build_calibrations(calibrations)
@@ -85,7 +90,8 @@ class SensorKit(RunnableMixin):
 
     def _build_calibrations(self, calibrations) -> None:
         for c in calibrations:
-            for d in self._store.tree.devices_iter(lambda node: node.obj.board == to_device_ids[c]):
+            for d in self._store.tree.devices_iter(
+                    lambda node: node.obj.board == deviceids_selector('id', device_name=c).field):
                 for conf in calibrations[c]:
                     cobj = Calibration(c, conf, d, self._store, self._scheduler)
                     self._calibrations.append(cobj)

@@ -732,6 +732,17 @@ test = ["pyfakefs", "pytest (>=6,!=8.1.*)"]
 type = ["pygobject-stubs", "pytest-mypy", "shtab", "types-pywin32"]
 
 [[package]]
+name = "littletable"
+version = "3.0.1"
+description = "Python in-memory ORM database"
+optional = false
+python-versions = ">=3.9"
+files = [
+    {file = "littletable-3.0.1-py3-none-any.whl", hash = "sha256:e070be36f6c474a519173f9501b4c6b3eb61f4cc8b1051eb071d40bd344c88eb"},
+    {file = "littletable-3.0.1.tar.gz", hash = "sha256:ed8617a481c513b50e2a73e9af8a2d93696171e9d91a23a6adf3ad0255880e6e"},
+]
+
+[[package]]
 name = "markdown-it-py"
 version = "3.0.0"
 description = "Python port of markdown-it. Markdown parsing, done right!"

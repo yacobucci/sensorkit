@@ -1,10 +1,11 @@
 import logging
 from typing import Any
 
-from ..constants import (VIRTUAL_DEVICE,
-                         to_capabilities,
+from ..constants import VIRTUAL_DEVICE
+from ..datastructures import (
+        Store,
+        capabilities_selector,
 )
-from ..datastructures import Store
 from ..devices import VirtualDevice
 from ..meters import Meter
 
@@ -12,8 +13,9 @@ logger = logging.getLogger(__name__)
 
 class StaticDevice(Meter):
     def __init__(self, capability: str, value: Any, units: str):
+        self._id = capabilities_selector('id', capability=capability)
         super().__init__(VirtualDevice(None, 'static-virtual', VIRTUAL_DEVICE,
-                                       [ to_capabilities[capability] ]))
+                                       [ self._id ]))
         self._capability = capability
         self._value = value
         self._units = units
@@ -24,7 +26,7 @@ class StaticDevice(Meter):
 
     @property
     def measurement(self) -> int:
-        return to_capabilities[self._capability]
+        return self._id
     
     @property
     def units(self) -> str:
