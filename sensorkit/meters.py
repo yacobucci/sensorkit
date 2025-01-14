@@ -70,10 +70,9 @@ class Meter(MeterInterface):
 #
 # BMP390 based measurements
 class Bmp390Temperature(Meter):
-    def __init__(self, device, store: datastructures.Store | None = None):
+    def __init__(self, device):
         super().__init__(device)
         self._real_device = device.real_device
-        self._store = store
 
     @property
     def measure(self) -> float:
@@ -93,10 +92,9 @@ class Bmp390Temperature(Meter):
         return self._real_device
 
 class Bmp390Pressure(Meter):
-    def __init__(self, device, store: datastructures.Store | None = None):
+    def __init__(self, device):
         super().__init__(device)
         self._real_device = device.real_device
-        self._store = store
 
     @property
     def measure(self) -> float:
@@ -116,10 +114,9 @@ class Bmp390Pressure(Meter):
         return self._real_device
 
 class Bmp390Altitude(Meter):
-    def __init__(self, device, store: datastructures.Store | None = None):
+    def __init__(self, device):
         super().__init__(device)
         self._real_device = device.real_device
-        self._store = store
 
     @property
     def measure(self) -> float:
@@ -142,10 +139,9 @@ class Bmp390Altitude(Meter):
 #
 # SHT41 (SHT4x) measurements
 class Sht41Temperature(Meter):
-    def __init__(self, device, store: datastructures.Store | None = None):
+    def __init__(self, device):
         super().__init__(device)
         self._real_device = device.real_device
-        self._store = store
 
     @property
     def measure(self) -> float:
@@ -166,10 +162,9 @@ class Sht41Temperature(Meter):
         return self._real_device
 
 class Sht41RelativeHumidity(Meter):
-    def __init__(self, device, store: datastructures.Store | None = None):
+    def __init__(self, device):
         super().__init__(device)
         self._real_device = device.real_device
-        self._store = store
 
     @property
     def measure(self) -> float:
@@ -193,10 +188,9 @@ class Sht41RelativeHumidity(Meter):
 #
 # VEML7700 measurements
 class Veml7700AmbientLight(Meter):
-    def __init__(self, device, store: datastructures.Store | None = None):
+    def __init__(self, device):
         super().__init__(device)
         self._real_device = device.real_device
-        self._store = store
 
     @property
     def measure(self) -> float:
@@ -217,10 +211,9 @@ class Veml7700AmbientLight(Meter):
         return self._real_device
 
 class Veml7700Lux(Meter):
-    def __init__(self, device, store: datastructures.Store | None = None):
+    def __init__(self, device):
         super().__init__(device)
         self._real_device = device.real_device
-        self._store = store
 
     @property
     def measure(self) -> float:
@@ -244,10 +237,9 @@ class Veml7700Lux(Meter):
 #
 # SCD41 (SCD4x) measurements
 class Scd41Temperature(Meter):
-    def __init__(self, device, store: datastructures.Store | None = None):
+    def __init__(self, device):
         super().__init__(device)
         self._real_device = device.real_device
-        self._store = store
 
     @property
     def measure(self) -> float:
@@ -268,10 +260,9 @@ class Scd41Temperature(Meter):
         return self._real_device
 
 class Scd41RelativeHumidity(Meter):
-    def __init__(self, device, store: datastructures.Store | None = None):
+    def __init__(self, device):
         super().__init__(device)
         self._real_device = device.real_device
-        self._store = store
 
     @property
     def measure(self) -> float:
@@ -292,10 +283,9 @@ class Scd41RelativeHumidity(Meter):
         return self._real_device
 
 class Scd41CO2(Meter):
-    def __init__(self, device, store: datastructures.Store | None = None):
+    def __init__(self, device):
         super().__init__(device)
         self._real_device = device.real_device
-        self._store = store
 
     @property
     def measure(self) -> int:
@@ -319,10 +309,9 @@ class Scd41CO2(Meter):
 #
 # TSL2591 measurements
 class Tsl2591Lux(Meter):
-    def __init__(self, device, store: datastructures.Store | None = None):
+    def __init__(self, device):
         super().__init__(device)
         self._real_device = device.real_device
-        self._store = store
 
     @property
     def measure(self) -> float:
@@ -343,10 +332,9 @@ class Tsl2591Lux(Meter):
         return self._real_device
 
 class Tsl2591Infrared(Meter):
-    def __init__(self, device, store: datastructures.Store | None = None):
+    def __init__(self, device):
         super().__init__(device)
         self._real_device = device.real_device
-        self._store = store
 
     @property
     def measure(self) -> float:
@@ -367,10 +355,9 @@ class Tsl2591Infrared(Meter):
         return self._real_device
 
 class Tsl2591Visible(Meter):
-    def __init__(self, device, store: datastructures.Store | None = None):
+    def __init__(self, device):
         super().__init__(device)
         self._real_device = device.real_device
-        self._store = store
 
     @property
     def measure(self) -> float:
@@ -391,10 +378,9 @@ class Tsl2591Visible(Meter):
         return self._real_device
 
 class Tsl2591FullSpectrum(Meter):
-    def __init__(self, device, store: datastructures.Store | None = None):
+    def __init__(self, device):
         super().__init__(device)
         self._real_device = device.real_device
-        self._store = store
 
     @property
     def measure(self) -> float:
@@ -435,14 +421,13 @@ class MeterFactory:
             self._boards[board] = dict()
             self._boards[board][measurement] = ctor
 
-    def get_meter(self, measurement: int, device: devices.Device,
-                  store: datastructures.Store | None = None) -> MeterInterface:
+    def get_meter(self, measurement: int, device: devices.Device) -> MeterInterface:
         dev_board = self._boards.get(device.board)
         ctor = dev_board.get(measurement)
         if not ctor:
             raise ValueError('{}:{}'.format(device.board, measurement))
 
-        return ctor(device, store)
+        return ctor(device)
 
 meter_factory = MeterFactory()
 meter_factory.register_meter(BMP390, TEMPERATURE, Bmp390Temperature)
