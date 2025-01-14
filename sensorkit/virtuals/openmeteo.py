@@ -13,7 +13,6 @@ from ..constants import (VIRTUAL_DEVICE,
 )
 from ..datastructures import (UniqueRecordFieldByWhere,
                               capabilities_selector,
-                              Store, # XXX will be removed
 )
 from ..devices import VirtualDevice
 from ..meters import Meter
@@ -49,7 +48,7 @@ class _OpenMeteoCurrentGetterImpl(GetterMixin, SchedulableMixin):
         return cls._instance
     
     def __init__(self, capabilities: list[str], interval: str, params: dict[str, int | str],
-                 store: Store, scheduler):
+                 scheduler):
         self._location = 'https://api.open-meteo.com/v1/forecast?'
         self._handlers = {}
 
@@ -111,8 +110,7 @@ class _OpenMeteoCurrentGetterImpl(GetterMixin, SchedulableMixin):
 
 class _OpenMeteoCurrent(Meter, _OpenMeteoMixin):
     def __init__(self, capability: str, interval: str,
-                 params: dict[str, int | str], store: Store,
-                 scheduler, device: VirtualDevice | None = None):
+                 params: dict[str, int | str], scheduler, device: VirtualDevice | None = None):
         self._id = capabilities_selector('id', capability=capability).field 
         if device is None:
             super().__init__(VirtualDevice(None, 'open-meteo', VIRTUAL_DEVICE,
@@ -156,16 +154,16 @@ class OpenMeteoCurrentBuilder:
     def __init__(self, capabilities: list[str]):
         self._caps = capabilities
 
-    def __call__(self, interval: str, params: dict[str, int | str], store: Store,
-                 scheduler, **_ignored) -> list[_OpenMeteoCurrent | _OpenMeteoCurrentGetterImpl]:
+    def __call__(self, interval: str, params: dict[str, int | str], scheduler,
+                 **_ignored) -> list[_OpenMeteoCurrent | _OpenMeteoCurrentGetterImpl]:
         # the builder knows what this is, put your smarts here when building other layered
         # virtual devices
 
-        getter_impl = _OpenMeteoCurrentGetterImpl(self._caps, interval, params, store, scheduler)
+        getter_impl = _OpenMeteoCurrentGetterImpl(self._caps, interval, params, scheduler)
 
         devs = []
         for cap in self._caps:
-            obj = _OpenMeteoCurrent(cap, interval, params, store, scheduler)
+            obj = _OpenMeteoCurrent(cap, interval, params, scheduler)
             getter_impl.set_handler(cap, obj._handler)
             devs.append(obj)
 

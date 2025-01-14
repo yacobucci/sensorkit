@@ -3,7 +3,6 @@ from typing import Any
 
 from ..constants import VIRTUAL_DEVICE
 from ..datastructures import (
-        Store,
         capabilities_selector,
 )
 from ..devices import VirtualDevice
@@ -40,7 +39,7 @@ class StaticBuilder:
     def __init__(self, capabilities: list[str]):
         self._caps = capabilities
 
-    def __call__(self, values: dict[str, dict[str, Any]], store: Store, **_ignored):
+    def __call__(self, values: dict[str, dict[str, Any]], **_ignored):
         devs = []
         for cap in self._caps:
             if cap not in values:

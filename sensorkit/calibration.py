@@ -11,7 +11,7 @@ from .tools.mixins import SchedulableMixin
 logger = logging.getLogger(__name__)
 
 class Calibration(SchedulableMixin):
-    def __init__(self, target, conf_dict, target_obj, store, scheduler):
+    def __init__(self, target, conf_dict, target_obj, tree, scheduler):
         self._last = None
         self._policy = None
         self._policy_interval = None
@@ -21,7 +21,7 @@ class Calibration(SchedulableMixin):
 
         self._target = target
         self._conf = conf_dict
-        self._store = store
+        self._tree = tree
         self._scheduler = scheduler
         self._job = None
 
@@ -68,7 +68,7 @@ class Calibration(SchedulableMixin):
                         return True
                 return False
             func = __filter
-        self._sources = self._store.tree.findall(func)
+        self._sources = self._tree.findall(func)
 
         if self._conf['policy']['aggregation'] == 'average':
             self._policy = self._cast_measure(self._measure_average)
