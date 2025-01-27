@@ -1,23 +1,40 @@
 import logging
 from typing import Any
 
-from ..constants import VIRTUAL_DEVICE
+from ..constants import (
+        VIRTUAL_DEVICE,
+        VIRTUAL_ADDR,
+)
 from ..datastructures import (
         capabilities_selector,
 )
-from ..devices import VirtualDevice
-from ..meters import Meter
+from ..meters import MeterInterface
 
 logger = logging.getLogger(__name__)
 
-class StaticDevice(Meter):
-    def __init__(self, capability: str, value: Any, units: str):
+class StaticDevice(MeterInterface):
+    def __init__(self, name: str, capability: str, value: Any, units: str):
+        self._name = name
         self._id = capabilities_selector('id', capability=capability)
-        super().__init__(VirtualDevice(None, 'static-virtual', VIRTUAL_DEVICE,
-                                       [ self._id ]))
         self._capability = capability
         self._value = value
         self._units = units
+
+    @property
+    def address(self) -> int:
+        return VIRTUAL_ADDR
+    
+    @property
+    def board(self) -> int:
+        return VIRTUAL_DEVICE
+
+    @property
+    def name(self) -> str:
+        return ''.join([self._name, ':', self._capability])
+
+    @property
+    def bus_id(self) -> int:
+        return VIRTUAL
 
     @property
     def measure(self) -> Any:
@@ -33,10 +50,11 @@ class StaticDevice(Meter):
 
     @property
     def real_device(self):
-        return None
+        raise NotImplementedError
 
 class StaticBuilder:
-    def __init__(self, capabilities: list[str]):
+    def __init__(self, name: str, capabilities: list[str]):
+        self._name = name
         self._caps = capabilities
 
     def __call__(self, values: dict[str, dict[str, Any]], **_ignored):
@@ -49,8 +67,7 @@ class StaticBuilder:
             if 'value' not in value or 'units' not in value:
                 raise ValueError('need value and units for capability {}'.format(cap))
 
-
-            obj = StaticDevice(cap, value['value'], value['units'])
+            obj = StaticDevice(self._name, cap, value['value'], value['units'])
             devs.append(obj)
 
         return devs

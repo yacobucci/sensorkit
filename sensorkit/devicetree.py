@@ -78,7 +78,7 @@ class Metadata:
         return bool(self._device_type & constants.DETECTOR)
 
 class DeviceTree:
-    def __init__(self, i2c: I2Cenv: dict[str, Any] | None = None):
+    def __init__(self, i2c: I2C, env: dict[str, Any] | None = None):
         self._i2c = i2c
         self._env = env
 
@@ -201,31 +201,10 @@ class DeviceTree:
         #                                    #issubclass(type(obj._device), devices.Bmp390)))
         #                                    isinstance(obj._device, devices.Bmp390)))
 
-        # XXX right now only supporting virtual or i2c, needs more work when bus is 
-        # abstracted away and there are multiple physical buses
-        if hasattr(obj, '_device') is False:
-            raise ValueError('cannot determine if {} is physical or virtual'.format(obj))
-        if isinstance(obj._device, devices.VirtualDevice):
+        if typ & constants.VIRTUAL:
             parent = self._virtual_bus
-            typ = constants.VIRTUAL
         else:
             parent = self._i2c_bus
-            typ = NONE
-
-        if issubclass(type(obj), meters.MeterInterface):
-            typ = typ | constants.METER
-        elif issubclass(type(obj), controls.MuxInterface):
-            typ = typ | constants.MUX
-        elif issubclass(type(obj), devices.DeviceInterface):
-            typ = typ | constants.DEVICE
-        else:
-            m = 'unsupported type, must be one of MeterInterface, MuxInterface, or DeviceInterface'
-            raise ValueError(m)
-
-        #print('DEBUG is_virtual {}'.format(bool(typ & constants.VIRTUAL)))
-        #print('DEBUG is_meter {}'.format(bool(typ & constants.METER)))
-        #print('DEBUG is_mux {}'.format(bool(typ & constants.MUX)))
-        #print('DEBUG is_device {}'.format(bool(typ & constants.DEVICE)))
 
         n = Node(name, parent=self._virtual_bus, obj=obj, metadata=Metadata(typ), **kwargs)
         return n
@@ -288,7 +267,7 @@ class DeviceTree:
                 self._build_tree(channel, chan, env, addr_set)
         else:
             dev = devices.device_factory.get_device(i2c, profile.name, profile.device_id,
-                                                    profile.capabilities, address, env)
+                                                    address, env)
             node = Node(address, parent=parent, obj=dev,
                         metadata=Metadata(constants.DEVICE))
             self._build_leaves(i2c, address, dev, node)
@@ -297,7 +276,7 @@ class DeviceTree:
         # XXX only do this for meters, eventually need to discriminate with detectors
         for cap in device.capabilities_gen():
             try:
-                m = meters.meter_factory.get_meter(cap, device)
+                m = meters.Meter(device, cap)
                 capstr = datastructures.capabilities_selector('capability', id=cap)
                 leaf = Node(capstr.field, parent=parent, obj=m,
                             metadata=Metadata(constants.METER))
