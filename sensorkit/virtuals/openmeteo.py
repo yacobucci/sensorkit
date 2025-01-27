@@ -6,16 +6,17 @@ from typing import Any
 from isodate import parse_duration
 import littletable as db
 
-from ..constants import (VIRTUAL_DEVICE,
-                         PRESSURE_MSL,
-                         TEMPERATURE,
-                         RELATIVE_HUMIDITY,
+from ..constants import (
+        VIRTUAL_ADDR,
+        VIRTUAL_DEVICE,
+        PRESSURE_MSL,
+        TEMPERATURE,
+        RELATIVE_HUMIDITY,
 )
 from ..datastructures import (UniqueRecordFieldByWhere,
                               capabilities_selector,
 )
-from ..devices import VirtualDevice
-from ..meters import Meter
+from ..meters import MeterInterface
 from ..tools.mixins import GetterMixin, SchedulableMixin
 
 logger = logging.getLogger(__name__)
@@ -108,19 +109,30 @@ class _OpenMeteoCurrentGetterImpl(GetterMixin, SchedulableMixin):
             u = current_units[c] if not om_cap.found  else current_units[om_cap.field]
             func(c, v, u)
 
-class _OpenMeteoCurrent(Meter, _OpenMeteoMixin):
-    def __init__(self, capability: str, interval: str,
-                 params: dict[str, int | str], scheduler, device: VirtualDevice | None = None):
+class _OpenMeteoCurrent(MeterInterface, _OpenMeteoMixin):
+    def __init__(self, name: str, capability: str, interval: str,
+                 params: dict[str, int | str], scheduler):
+        self._name = name
         self._id = capabilities_selector('id', capability=capability).field 
-        if device is None:
-            super().__init__(VirtualDevice(None, 'open-meteo', VIRTUAL_DEVICE,
-                                           [ self._id ]))
-        else:
-            super().__init__(device)
-
         self._capability = capability
         self._measure = 0.0
         self._units = None
+
+    @property
+    def address(self) -> int:
+        return VIRTUAL_ADDR
+
+    @property
+    def board(self) -> int:
+        return VIRTUAL_DEVICE
+
+    @property
+    def name(self) -> str:
+        return ''.join([self._name, ':', self._capability])
+
+    @property
+    def bus_id(self) -> int:
+        return VIRTUAL
 
     @property
     def measure(self) -> float:
@@ -151,7 +163,8 @@ class _OpenMeteoCurrent(Meter, _OpenMeteoMixin):
         self._units = units
 
 class OpenMeteoCurrentBuilder:
-    def __init__(self, capabilities: list[str]):
+    def __init__(self, name: str, capabilities: list[str]):
+        self._name = name
         self._caps = capabilities
 
     def __call__(self, interval: str, params: dict[str, int | str], scheduler,
@@ -163,7 +176,7 @@ class OpenMeteoCurrentBuilder:
 
         devs = []
         for cap in self._caps:
-            obj = _OpenMeteoCurrent(cap, interval, params, scheduler)
+            obj = _OpenMeteoCurrent(self._name, cap, interval, params, scheduler)
             getter_impl.set_handler(cap, obj._handler)
             devs.append(obj)
 

@@ -37,7 +37,7 @@ class SensorKit(RunnableMixin):
         self._virtual_devices = self._config.virtual_devices
         for dev in self._virtual_devices:
             conf = self._virtual_devices[dev]
-            objs = self._instantiate_device(conf)
+            objs = self._instantiate_device(dev, conf)
 
             for d in objs:
                 field = devicetypes_selector('type', device=conf['type'])
@@ -92,12 +92,12 @@ class SensorKit(RunnableMixin):
                     cobj = Calibration(c, conf, d, self._tree, self._scheduler)
                     self._calibrations.append(cobj)
 
-    def _instantiate_device(self, config: dict[str, Any]) -> DeviceInterface:
+    def _instantiate_device(self, name: str, config: dict[str, Any]) -> DeviceInterface:
         module = import_module(config['module'], package='sensorkit')
 
         builder_name = config['builder']
         builder = getattr(module, builder_name)
-        build_obj = builder(config['capabilities'])
+        build_obj = builder(name, config['capabilities'])
 
         args = { **self._static_args, **config['args'] }
         objects = build_obj(**args)

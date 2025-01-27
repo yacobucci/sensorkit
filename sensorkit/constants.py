@@ -42,7 +42,7 @@ LUX_UNITS                    = 'Lux (Lx)'
 PPM_UNITS                    = 'Parts per Million (PPM)'
 
 # Breakout boards
-VIRTUAL_DEVICE = NONE
+VIRTUAL_DEVICE = 0xFFFF
 PCA9546A       = 0x0001
 PCA9548A       = 0x0002
 TCA9548A       = PCA9548A
