@@ -91,13 +91,22 @@ class Device(DeviceInterface):
         self._name = name
         self._board = board
         self._caps = capabilities
-        self._address = address
         self._dev = None
         self._property_map = dict()
         self._capability_units = dict()
 
+        self._address = address
+        self._bus_id = 0
+        if self._bus is not None and hasattr(self._bus, 'channel_switch'):
+            n = int.from_bytes(self._bus.channel_switch, 'little')
+            r = 0
+            while n > 1:
+                n = n >> 1
+                r = r + 1
+            self._bus_id = (0x80 | (r & 0x7f))
+
     @property
-    def address(self) -> int | str:
+    def address(self) -> int:
         return self._address
 
     @property
@@ -132,6 +141,7 @@ class Device(DeviceInterface):
     def capability_units(self, capability: int) -> str:
         try:
             units = self._capability_units[capability]
+            return units
         except KeyError:
             msg = 'capability ({}) has no associated units for device ({})'.format(capability,
                                                                                    self._board)
@@ -142,14 +152,10 @@ class Device(DeviceInterface):
         return self._bus
 
     @property
-    def bus_id(self) -> int:
-        r = 0
-        if self._bus is not None and 'channel_switch' in self._bus.__dict__:
-            n = int.from_bytes(self._bus.channel_switch, 'little')
-            while n > 1:
-                n = n >> 1
-                r = r + 1
-        return r
+    def bus_id(self) -> [ int | None ]:
+        if self._bus_id & 0x80:
+            return self._bus_id & 0x7f
+        return None
 
 class Bmp390(Device):
     def __init__(self, bus: I2C, name: str, board: int,
