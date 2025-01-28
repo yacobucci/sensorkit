@@ -42,7 +42,7 @@ class Calibration(SchedulableMixin):
         if 'meter' in source:
             def __filter(node):
                 meta = getattr(node, 'metadata', None)
-                devid = deviceids_selector('id', source['meter'])
+                devid = deviceids_selector('id', source['meter'].upper())
                 if ((meta is not None and meta.is_meter) and
                     (devid.found is True and devid.field == node.obj.board)):
                     field = capabilities_selector('id', capability=measurement)
