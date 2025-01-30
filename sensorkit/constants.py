@@ -12,10 +12,10 @@ VIRTUAL       = 0x80000000
 
 BUS           = 0x0001
 MUX           = 0x0002
-CHANNEL       = 0x0004
-DEVICE        = 0x0008
-METER         = 0x0010
-DETECTOR      = 0x0020
+CHANNEL       = 0x0003
+DEVICE        = 0x0004
+METER         = 0x0005
+DETECTOR      = 0x0006
 
 # Capabilities
 FOUR_CHANNEL            = 0x0001

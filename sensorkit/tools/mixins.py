@@ -14,7 +14,7 @@ class NodeMixin():
 
     @property
     def uuid(self) -> uuid.UUID:
-        return self._uuid
+        return str(self._uuid)
 
 class GetterMixin(metaclass=abc.ABCMeta):
     @classmethod
@@ -40,7 +40,7 @@ class GetterMixin(metaclass=abc.ABCMeta):
     def _handler(self, state, contents):
         raise NotImplementedError
 
-class SchedulableMixin(metaclass=abc.ABCMeta):
+class SchedulableInterface(metaclass=abc.ABCMeta):
     @classmethod
     def __subclasshook__(cls, subclass):
         return (hasattr(subclass, 'schedule') and
@@ -57,7 +57,7 @@ class SchedulableMixin(metaclass=abc.ABCMeta):
     def unschedule(self) -> None:
         raise NotImplementedError
 
-class RunnableMixin(metaclass=abc.ABCMeta):
+class RunnableInterface(metaclass=abc.ABCMeta):
     @classmethod
     def __subclasshook__(cls, subclass):
         return (hasattr(subclass, 'run') and

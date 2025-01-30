@@ -14,7 +14,7 @@ from . import constants
 from . import profiles
 from .tools.mixins import (
         NodeMixin,
-        RunnableMixin,
+        RunnableInterface,
 )
 
 logger = logging.getLogger(__name__)
@@ -31,8 +31,8 @@ class DeviceInterface(metaclass=abc.ABCMeta):
                 callable(subclass.device_id) and
                 hasattr(subclass, 'name') and
                 callable(subclass.name) and
-                hasattr(subclass, 'bus_id') and
-                callable(subclass.bus_id) and
+                hasattr(subclass, 'channel_id') and
+                callable(subclass.channel_id) and
                 hasattr(subclass, 'real_device') and
                 callable(subclass.real_device) and
                 hasattr(subclass, 'capabilities') and
@@ -58,7 +58,7 @@ class DeviceInterface(metaclass=abc.ABCMeta):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def bus_id(self) -> int:
+    def channel_id(self) -> int:
         raise NotImplementedError
 
     @abc.abstractmethod
@@ -94,14 +94,14 @@ class Device(DeviceInterface):
 
         self._address = address
         self._has_channel = False
-        self._bus_id = 0
+        self._channel_id = 0
         if self._bus is not None and hasattr(self._bus, 'channel_switch'):
             n = int.from_bytes(self._bus.channel_switch, 'little')
             r = 0
             while n > 1:
                 n = n >> 1
                 r = r + 1
-            self._bus_id = r
+            self._channel_id = r
             self._has_channel = True
 
     @property
@@ -147,9 +147,9 @@ class Device(DeviceInterface):
             raise DeviceCapabilityError(msg)
 
     @property
-    def bus_id(self) -> [ int | None ]:
+    def channel_id(self) -> [ int | None ]:
         if self._has_channel is True:
-            return self._bus_id
+            return self._channel_id
         return None
 
 class Bmp390(NodeMixin, Device):
@@ -200,7 +200,7 @@ class Veml7700(NodeMixin, Device):
     def real_device(self):
         return self._dev
 
-class Scd41(NodeMixin, Device, RunnableMixin):
+class Scd41(NodeMixin, Device, RunnableInterface):
     def __init__(self, bus: I2C, name: str, device_id: int,
                  address: int = 98, env: dict[str, Any] | None = None):
         super().__init__(bus, name, device_id,

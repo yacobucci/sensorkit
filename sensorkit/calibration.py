@@ -3,14 +3,17 @@ import logging
 
 from isodate import parse_duration
 
-from .datastructures import (capabilities_selector,
-                             deviceids_selector,
+from .datastructures import (
+        capabilities_selector,
+        deviceids_selector,
+        join_devices_meters,
+        join_virtuals,
 )
-from .tools.mixins import SchedulableMixin
+from .tools.mixins import SchedulableInterface
 
 logger = logging.getLogger(__name__)
 
-class Calibration(SchedulableMixin):
+class Calibration(SchedulableInterface):
     def __init__(self, target, conf_dict, target_obj, tree, scheduler):
         self._last = None
         self._policy = None
@@ -37,38 +40,20 @@ class Calibration(SchedulableMixin):
                 else self._conf['target']['method']
 
         measurement = self._conf['measurement']
+        field = capabilities_selector('id', capability=measurement)
+        if field.found is False:
+            raise ValueError('unsuppored capability {}'.format(measurement))
         source = self._conf['source']
-        func = None
+        self._sources = list()
         if 'meter' in source:
-            def __filter(node):
-                meta = getattr(node, 'metadata', None)
-                devid = deviceids_selector('id', source['meter'].upper())
-                if ((meta is not None and meta.is_meter) and
-                    (devid.found is True and devid.field == node.obj.device_id)):
-                    field = capabilities_selector('id', capability=measurement)
-                    if field.found and field.field == node.obj.measurement:
-                        return True
-                return False
-            func = __filter
+            children = join_devices_meters()
+            for meter in children.where(name=source['meter'].upper(), measurement=field.field):
+                self._sources.append(meter.obj)
+
         elif 'virtual' in source:
-            def __filter(node):
-                meta = getattr(node, 'metadata', None)
-                if meta is not None and meta.is_virtual and source['virtual'] == node.name:
-                    field = capabilities_selector('id', capability=measurement)
-                    if field.found and field.field == node.obj.measurement:
-                        return True
-                return False
-            func = __filter
-        else:
-            def __filter(node):
-                meta = getattr(node, 'metadata', None)
-                if meta is not None and meta.is_meter:
-                    field = capabilities_selector('id', capability=measurement)
-                    if field.found and field.field == node.obj.measurement:
-                        return True
-                return False
-            func = __filter
-        self._sources = self._tree.findall(func)
+            virtuals = join_virtuals()
+            for virtual in virtuals.where(name=source['virtual'], measurement=field.field):
+                self._sources.append(virtual.obj)
 
         if self._conf['policy']['aggregation'] == 'average':
             self._policy = self._cast_measure(self._measure_average)

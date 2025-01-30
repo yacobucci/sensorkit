@@ -27,8 +27,8 @@ class MeterInterface(metaclass=abc.ABCMeta):
                 callable(subclass.device_id) and
                 hasattr(subclass, 'name') and
                 callable(subclass.name) and
-                hasattr(subclass, 'bus_id') and
-                callable(subclass.bus_id) or
+                hasattr(subclass, 'channel_id') and
+                callable(subclass.channel_id) or
                 NotImplemented)
 
     @abc.abstractmethod
@@ -56,7 +56,7 @@ class MeterInterface(metaclass=abc.ABCMeta):
         raise NotImplementedError
 
     @property
-    def bus_id(self) -> int:
+    def channel_id(self) -> int:
         raise NotImplementedError
 
 class Meter(NodeMixin, MeterInterface):
@@ -78,8 +78,8 @@ class Meter(NodeMixin, MeterInterface):
         return self._device._name
 
     @property
-    def bus_id(self) -> int:
-        return self._device._bus_id
+    def channel_id(self) -> int:
+        return self._device._channel_id
 
     @property
     def measure(self) -> float:

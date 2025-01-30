@@ -1,40 +1,17 @@
 import logging
 from typing import Any
 
-from ..constants import (
-        VIRTUAL_DEVICE,
-        VIRTUAL_ADDR,
-)
-from ..datastructures import (
-        capabilities_selector,
-)
 from ..meters import MeterInterface
+from ..tools.mixins import NodeMixin
+from .virtual import Virtual
 
 logger = logging.getLogger(__name__)
 
-class StaticDevice(MeterInterface):
+class StaticDevice(NodeMixin, Virtual):
     def __init__(self, name: str, capability: str, value: Any, units: str):
-        self._name = name
-        self._id = capabilities_selector('id', capability=capability)
-        self._capability = capability
+        super().__init__(name, capability)
         self._value = value
         self._units = units
-
-    @property
-    def address(self) -> int:
-        return VIRTUAL_ADDR
-    
-    @property
-    def device_id(self) -> int:
-        return VIRTUAL_DEVICE
-
-    @property
-    def name(self) -> str:
-        return ''.join([self._name, ':', self._capability])
-
-    @property
-    def bus_id(self) -> int:
-        return VIRTUAL
 
     @property
     def measure(self) -> Any:
@@ -42,7 +19,7 @@ class StaticDevice(MeterInterface):
 
     @property
     def measurement(self) -> int:
-        return self._id
+        return self._measurement
     
     @property
     def units(self) -> str:

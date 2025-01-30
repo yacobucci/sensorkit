@@ -17,7 +17,12 @@ from ..datastructures import (UniqueRecordFieldByWhere,
                               capabilities_selector,
 )
 from ..meters import MeterInterface
-from ..tools.mixins import GetterMixin, SchedulableMixin
+from ..tools.mixins import (
+        GetterMixin,
+        SchedulableInterface,
+        NodeMixin,
+)
+from .virtual import Virtual
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +36,7 @@ open_meteo.csv_import(open_meteo_data, transforms={"id": int})
 
 fields = UniqueRecordFieldByWhere(open_meteo)
 
-class _OpenMeteoMixin(metaclass=abc.ABCMeta):
+class _OpenMeteoInterface(metaclass=abc.ABCMeta):
     @classmethod
     def __subclasshook__(cls, subclass):
         return (hasattr(subclass, '_handler') and
@@ -42,7 +47,7 @@ class _OpenMeteoMixin(metaclass=abc.ABCMeta):
     def _handler(self) -> None:
         raise NotImplementedError
 
-class _OpenMeteoCurrentGetterImpl(GetterMixin, SchedulableMixin):
+class _OpenMeteoCurrentGetterImpl(GetterMixin, SchedulableInterface):
     def __new__(cls, *args, **kwargs):
         if not hasattr(cls, '_instance'):
             cls._instance = super(_OpenMeteoCurrentGetterImpl, cls).__new__(cls)
@@ -109,30 +114,12 @@ class _OpenMeteoCurrentGetterImpl(GetterMixin, SchedulableMixin):
             u = current_units[c] if not om_cap.found  else current_units[om_cap.field]
             func(c, v, u)
 
-class _OpenMeteoCurrent(_OpenMeteoMixin, MeterInterface):
+class _OpenMeteoCurrent(NodeMixin, Virtual, _OpenMeteoInterface):
     def __init__(self, name: str, capability: str, interval: str,
                  params: dict[str, int | str], scheduler):
-        self._name = name
-        self._id = capabilities_selector('id', capability=capability).field 
-        self._capability = capability
+        super().__init__(name, capability)
         self._measure = 0.0
         self._units = None
-
-    @property
-    def address(self) -> int:
-        return VIRTUAL_ADDR
-
-    @property
-    def device_id(self) -> int:
-        return VIRTUAL_DEVICE
-
-    @property
-    def name(self) -> str:
-        return ''.join([self._name, ':', self._capability])
-
-    @property
-    def bus_id(self) -> int:
-        return VIRTUAL
 
     @property
     def measure(self) -> float:
@@ -140,15 +127,11 @@ class _OpenMeteoCurrent(_OpenMeteoMixin, MeterInterface):
 
     @property
     def measurement(self) -> int:
-        return self._id
+        return self._measurement
 
     @property
     def units(self) -> str:
         return self._units
-
-    @property
-    def real_device(self):
-        return None
 
     def _handler(self, capability: str, value: float | int, units: str) -> None:
         logger.debug('open_meteo_handler called with %s %s %s',

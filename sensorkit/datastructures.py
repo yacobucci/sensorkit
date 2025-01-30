@@ -77,19 +77,107 @@ nodes.create_index('uuid', unique=True)
 nodes.create_index('kind')
 
 multiplexer_attributes = db.Table('multiplexer_attributes')
-multiplexer_attributes.create_index('uuid')
-multiplexer_objects = db.Table('multiplexer_objects')
-multiplexer_objects.create_index('uuid')
-channels = db.Table('channels')
-channels.create_index('uuid')
+multiplexer_attributes.create_index('uuid', unique=True)
+channel_attributes = db.Table('channel_attributes')
+channel_attributes.create_index('uuid', unique=True)
 device_attributes = db.Table('device_attributes')
-device_attributes.create_index('uuid')
-device_objects = db.Table('device_objects')
-device_objects.create_index('uuid')
+device_attributes.create_index('uuid', unique=True)
+device_attributes.create_index('name')
+device_attributes.create_index('device_id')
+device_attributes.create_index('channel_id')
+device_attributes.create_index('address')
 meter_attributes = db.Table('meter_attributes')
-meter_attributes.create_index('uuid')
-meter_objects = db.Table('meter_objects')
-meter_objects.create_index('uuid')
+meter_attributes.create_index('uuid', unique=True)
+meter_attributes.create_index('measurement')
+virtual_attributes = db.Table('virtual_attributes')
+virtual_attributes.create_index('uuid', unique=True)
+virtual_attributes.create_index('name')
+virtual_attributes.create_index('measurement')
+
+# Joins
+def join_devices():
+    devices = device_attributes.outer_join(join_type=db.Table.FULL_OUTER_JOIN,
+                                           other=nodes,
+                                           attrlist=[
+                                               (nodes, 'uuid'),
+                                               (nodes, 'kind'),
+                                               (nodes, 'obj'),
+                                               (nodes, 'is_virtual'),
+                                               (device_attributes, 'uuid'),
+                                               (device_attributes, '_address', 'address'),
+                                               (device_attributes, '_has_channel', 'has_channel'),
+                                               (device_attributes, '_channel_id', 'channel_id'),
+                                               (device_attributes, '_name', 'name'),
+                                               (device_attributes, '_caps', 'capabilities'),
+                                               (device_attributes, '_device_id', 'device_id'),
+                                           ],
+                                           uuid='uuid')('devices')
+    return devices.where(kind=constants.DEVICE)
+
+def join_meters():
+    meters = meter_attributes.outer_join(join_type=db.Table.FULL_OUTER_JOIN,
+                                         other=nodes,
+                                         attrlist=[
+                                             (nodes, 'uuid'),
+                                             (nodes, 'kind'),
+                                             (nodes, 'obj'),
+                                             (nodes, 'is_virtual'),
+                                             (meter_attributes, 'uuid'),
+                                             (meter_attributes, '_measurement', 'measurement'),
+                                         ],
+                                         uuid='uuid')('meters')
+    return meters.where(kind=constants.METER)
+
+def join_virtuals():
+    virtuals = virtual_attributes.outer_join(join_type=db.Table.FULL_OUTER_JOIN,
+                                             other=nodes,
+                                             attrlist=[
+                                                 (nodes, 'uuid'),
+                                                 (nodes, 'kind'),
+                                                 (nodes, 'obj'),
+                                                 (nodes, 'is_virtual'),
+                                                 (virtual_attributes, 'uuid'),
+                                                 (virtual_attributes, 'name'),
+                                                 (virtual_attributes, 'measurement'),
+                                             ],
+                                             uuid='uuid')('virtuals')
+    return virtuals.where(is_virtual=True)
+
+def join_devices_meters():
+    devices = device_attributes.outer_join(join_type=db.Table.FULL_OUTER_JOIN,
+                                           other=links,
+                                           attrlist=[
+                                               (links, 'node'),
+                                               (links, 'parent'),
+                                               (device_attributes, 'uuid'),
+                                               (device_attributes, '_name', 'name'),
+                                               (device_attributes, '_address', 'address'),
+                                               (device_attributes, '_has_channel', 'has_channel'),
+                                               (device_attributes, '_channel_id', 'channel_id'),
+                                               (device_attributes, '_device_id', 'device_id'),
+                                           ],
+                                           uuid='parent')('devices')
+
+    meters = meter_attributes.outer_join(join_type=db.Table.FULL_OUTER_JOIN,
+                                         other=nodes,
+                                         attrlist=[
+                                             (nodes, 'uuid'),
+                                             (nodes, 'obj', 'meter_obj'),
+                                             (meter_attributes, '_measurement', 'measurement'),
+                                         ],
+                                         uuid='uuid')('meters')
+
+    children = devices.outer_join(join_type=db.Table.FULL_OUTER_JOIN,
+                                  other=meters,
+                                  attrlist=[
+                                      (devices,'name'),
+                                      (devices,'uuid'),
+                                      (meters,'uuid','child_uuid'),
+                                      (meters,'meter_obj'),
+                                      (meters,'measurement'),
+                                  ],
+                                  node='uuid')('device_meters')
+    return children
 
 class NonUniqueRecordQuery(Exception):
     """Non Unique Query"""
