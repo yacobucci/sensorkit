@@ -1,20 +1,15 @@
 import logging
 from typing import Any
 
-from ..constants import (VIRTUAL_DEVICE,
-                         to_capabilities,
-)
-from ..datastructures import Store
-from ..devices import VirtualDevice
-from ..meters import Meter
+from ..meters import MeterInterface
+from ..tools.mixins import NodeMixin
+from .virtual import Virtual
 
 logger = logging.getLogger(__name__)
 
-class StaticDevice(Meter):
-    def __init__(self, capability: str, value: Any, units: str):
-        super().__init__(VirtualDevice(None, 'static-virtual', VIRTUAL_DEVICE,
-                                       [ to_capabilities[capability] ]))
-        self._capability = capability
+class StaticDevice(NodeMixin, Virtual):
+    def __init__(self, name: str, capability: str, value: Any, units: str):
+        super().__init__(name, capability)
         self._value = value
         self._units = units
 
@@ -24,21 +19,18 @@ class StaticDevice(Meter):
 
     @property
     def measurement(self) -> int:
-        return to_capabilities[self._capability]
+        return self._measurement
     
     @property
     def units(self) -> str:
         return self._units
 
-    @property
-    def real_device(self):
-        return None
-
 class StaticBuilder:
-    def __init__(self, capabilities: list[str]):
+    def __init__(self, name: str, capabilities: list[str]):
+        self._name = name
         self._caps = capabilities
 
-    def __call__(self, values: dict[str, dict[str, Any]], store: Store, **_ignored):
+    def __call__(self, values: dict[str, dict[str, Any]], **_ignored):
         devs = []
         for cap in self._caps:
             if cap not in values:
@@ -48,8 +40,7 @@ class StaticBuilder:
             if 'value' not in value or 'units' not in value:
                 raise ValueError('need value and units for capability {}'.format(cap))
 
-
-            obj = StaticDevice(cap, value['value'], value['units'])
+            obj = StaticDevice(self._name, cap, value['value'], value['units'])
             devs.append(obj)
 
         return devs

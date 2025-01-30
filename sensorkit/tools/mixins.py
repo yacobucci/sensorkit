@@ -3,8 +3,18 @@ import logging
 from typing import Any
 import urllib.parse
 import urllib.request
+import uuid
 
 logger = logging.getLogger(__name__)
+
+class NodeMixin():
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._uuid = uuid.uuid4()
+
+    @property
+    def uuid(self) -> uuid.UUID:
+        return str(self._uuid)
 
 class GetterMixin(metaclass=abc.ABCMeta):
     @classmethod
@@ -30,7 +40,7 @@ class GetterMixin(metaclass=abc.ABCMeta):
     def _handler(self, state, contents):
         raise NotImplementedError
 
-class SchedulableMixin(metaclass=abc.ABCMeta):
+class SchedulableInterface(metaclass=abc.ABCMeta):
     @classmethod
     def __subclasshook__(cls, subclass):
         return (hasattr(subclass, 'schedule') and
@@ -47,7 +57,7 @@ class SchedulableMixin(metaclass=abc.ABCMeta):
     def unschedule(self) -> None:
         raise NotImplementedError
 
-class RunnableMixin(metaclass=abc.ABCMeta):
+class RunnableInterface(metaclass=abc.ABCMeta):
     @classmethod
     def __subclasshook__(cls, subclass):
         return (hasattr(subclass, 'run') and
