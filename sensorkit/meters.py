@@ -8,43 +8,28 @@ from busio import I2C
 from . import datastructures
 from . import devices
 from .constants import *
+from .tools.mixins import NodeMixin
 
 logger = logging.getLogger(__name__)
 
 class MeterInterface(metaclass=abc.ABCMeta):
     @classmethod
     def __subclasshook__(cls, subclass):
-        return (hasattr(subclass, 'address') and
-                callable(subclass.address) and
-                hasattr(subclass, 'board') and
-                callable(subclass.board) and
-                hasattr(subclass, 'name') and
-                callable(subclass.name) and
-                hasattr(subclass, 'bus_id') and
-                callable(subclass.bus_id) and
-                hasattr(subclass, 'measure') and
+        return (hasattr(subclass, 'measure') and
                 callable(subclass.measure) and
                 hasattr(subclass, 'measurement') and
                 callable(subclass.measurement) and
                 hasattr(subclass, 'units') and
-                callable(subclass.units) or
+                callable(subclass.units) and
+                hasattr(subclass, 'address') and
+                callable(subclass.address) and
+                hasattr(subclass, 'device_id') and
+                callable(subclass.device_id) and
+                hasattr(subclass, 'name') and
+                callable(subclass.name) and
+                hasattr(subclass, 'bus_id') and
+                callable(subclass.bus_id) or
                 NotImplemented)
-
-    @abc.abstractmethod
-    def address(self) -> int:
-        raise NotImplementedError
-
-    @abc.abstractmethod
-    def board(self) -> int:
-        raise NotImplementedError
-
-    @abc.abstractmethod
-    def name(self) -> str:
-        raise NotImplementedError
-
-    @abc.abstractmethod
-    def bus_id(self) -> int:
-        raise NotImplementedError
 
     @abc.abstractmethod
     def measure(self) -> float:
@@ -58,26 +43,43 @@ class MeterInterface(metaclass=abc.ABCMeta):
     def units(self) -> str:
         raise NotImplementedError
 
-class Meter(MeterInterface):
+    @property
+    def address(self) -> int:
+        raise NotImplementedError
+
+    @property
+    def device_id(self) -> int:
+        raise NotImplementedError
+
+    @property
+    def name(self) -> str:
+        raise NotImplementedError
+
+    @property
+    def bus_id(self) -> int:
+        raise NotImplementedError
+
+class Meter(NodeMixin, MeterInterface):
     def __init__(self, device, measurement: int):
+        super().__init__()
         self._device = device
         self._measurement = measurement
 
     @property
     def address(self) -> int:
-        return self._device.address
+        return self._device._address
 
     @property
-    def board(self) -> int:
-        return self._device.board
+    def device_id(self) -> int:
+        return self._device._device_id
 
     @property
     def name(self) -> str:
-        return self._device.name
+        return self._device._name
 
     @property
     def bus_id(self) -> int:
-        return self._device.bus_id
+        return self._device._bus_id
 
     @property
     def measure(self) -> float:

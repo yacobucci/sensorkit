@@ -12,7 +12,10 @@ from busio import I2C
 
 from . import constants
 from . import profiles
-from .tools.mixins import RunnableMixin
+from .tools.mixins import (
+        NodeMixin,
+        RunnableMixin,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -24,10 +27,14 @@ class DeviceInterface(metaclass=abc.ABCMeta):
     def __subclasshook__(cls, subclass):
         return (hasattr(subclass, 'address') and
                 callable(subclass.address) and
-                hasattr(subclass, 'board') and
-                callable(subclass.board) and
+                hasattr(subclass, 'device_id') and
+                callable(subclass.device_id) and
                 hasattr(subclass, 'name') and
                 callable(subclass.name) and
+                hasattr(subclass, 'bus_id') and
+                callable(subclass.bus_id) and
+                hasattr(subclass, 'real_device') and
+                callable(subclass.real_device) and
                 hasattr(subclass, 'capabilities') and
                 callable(subclass.capabilities) and
                 hasattr(subclass, 'capabilities_gen') and
@@ -35,13 +42,7 @@ class DeviceInterface(metaclass=abc.ABCMeta):
                 hasattr(subclass, 'read_capability') and
                 callable(subclass.read_capability) and
                 hasattr(subclass, 'capability_units') and
-                callable(subclass.capability_units) and
-                hasattr(subclass, 'bus') and
-                callable(subclass.bus) and
-                hasattr(subclass, 'bus_id') and
-                callable(subclass.bus_id) and
-                hasattr(subclass, 'real_device') and
-                callable(subclass.real_device) or
+                callable(subclass.capability_units) or
                 NotImplemented)
 
     @abc.abstractmethod
@@ -49,11 +50,19 @@ class DeviceInterface(metaclass=abc.ABCMeta):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def board(self) -> int:
+    def device_id(self) -> int:
         raise NotImplementedError
 
     @abc.abstractmethod
     def name(self) -> str:
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def bus_id(self) -> int:
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def real_device(self):
         raise NotImplementedError
 
     @abc.abstractmethod
@@ -72,30 +81,19 @@ class DeviceInterface(metaclass=abc.ABCMeta):
     def capability_units(self, capability: int) -> str:
         raise NotImplementedError
 
-    @abc.abstractmethod
-    def bus(self) -> I2C:
-        raise NotImplementedError
-
-    @abc.abstractmethod
-    def bus_id(self) -> int:
-        raise NotImplementedError
-
-    @abc.abstractmethod
-    def real_device(self):
-        raise NotImplementedError
-
 class Device(DeviceInterface):
-    def __init__(self, bus: I2C | None, name: str, board: int, capabilities: list[int],
+    def __init__(self, bus: I2C | None, name: str, device_id: int, capabilities: list[int],
                  address: int, env: dict[str, Any] | None = None):
         self._bus = bus
         self._name = name
-        self._board = board
+        self._device_id = device_id
         self._caps = capabilities
         self._dev = None
         self._property_map = dict()
         self._capability_units = dict()
 
         self._address = address
+        self._has_channel = False
         self._bus_id = 0
         if self._bus is not None and hasattr(self._bus, 'channel_switch'):
             n = int.from_bytes(self._bus.channel_switch, 'little')
@@ -103,15 +101,16 @@ class Device(DeviceInterface):
             while n > 1:
                 n = n >> 1
                 r = r + 1
-            self._bus_id = (0x80 | (r & 0x7f))
+            self._bus_id = r
+            self._has_channel = True
 
     @property
     def address(self) -> int:
         return self._address
 
     @property
-    def board(self) -> int:
-        return self._board
+    def device_id(self) -> int:
+        return self._device_id
 
     @property
     def name(self) -> str:
@@ -130,10 +129,10 @@ class Device(DeviceInterface):
             prop = self._property_map[capability]
         except KeyError:
             raise DeviceCapabilityError('capability ({}) is unsupported by device ({})'.format(
-                capability, self._board))
+                capability, self._device_id))
 
         if self._dev is None:
-            msg = 'device initialized without real device ({})'.format(self._board)
+            msg = 'device initialized without real device ({})'.format(self._device_id)
             raise DeviceCapabilityError(msg)
 
         return getattr(self._dev, prop)
@@ -144,23 +143,19 @@ class Device(DeviceInterface):
             return units
         except KeyError:
             msg = 'capability ({}) has no associated units for device ({})'.format(capability,
-                                                                                   self._board)
+                                                                                   self._device_id)
             raise DeviceCapabilityError(msg)
 
     @property
-    def bus(self) -> I2C:
-        return self._bus
-
-    @property
     def bus_id(self) -> [ int | None ]:
-        if self._bus_id & 0x80:
-            return self._bus_id & 0x7f
+        if self._has_channel is True:
+            return self._bus_id
         return None
 
-class Bmp390(Device):
-    def __init__(self, bus: I2C, name: str, board: int,
+class Bmp390(NodeMixin, Device):
+    def __init__(self, bus: I2C, name: str, device_id: int,
                  address: int = 119, env: dict[str, Any] | None = None):
-        super().__init__(bus, name, board,
+        super().__init__(bus, name, device_id,
                          [ constants.TEMPERATURE, constants.PRESSURE, constants.ALTITUDE ],
                          address)
         self._dev = adafruit_bmp3xx.BMP3XX_I2C(bus, address)
@@ -175,10 +170,10 @@ class Bmp390(Device):
     def real_device(self):
         return self._dev
 
-class Sht41(Device):
-    def __init__(self, bus: I2C, name: str, board: int,
+class Sht41(NodeMixin, Device):
+    def __init__(self, bus: I2C, name: str, device_id: int,
                  address: int = 68, env: dict[str, Any] | None = None):
-        super().__init__(bus, name, board,
+        super().__init__(bus, name, device_id,
                          [ constants.RELATIVE_HUMIDITY, constants.TEMPERATURE ],
                          address)
         self._dev = adafruit_sht4x.SHT4x(bus, address)
@@ -191,10 +186,10 @@ class Sht41(Device):
     def real_device(self):
         return self._dev
 
-class Veml7700(Device):
-    def __init__(self, bus: I2C, name: str, board: int,
+class Veml7700(NodeMixin, Device):
+    def __init__(self, bus: I2C, name: str, device_id: int,
                  address: int = 16, env: dict[str, Any] | None = None):
-        super().__init__(bus, name, board, [ constants.LUX, constants.AMBIENT_LIGHT ], address)
+        super().__init__(bus, name, device_id, [ constants.LUX, constants.AMBIENT_LIGHT ], address)
         self._dev = adafruit_veml7700.VEML7700(bus, address)
         self._property_map[constants.LUX] = 'lux'
         self._capability_units[constants.LUX] = constants.LUX_UNITS
@@ -205,10 +200,10 @@ class Veml7700(Device):
     def real_device(self):
         return self._dev
 
-class Scd41(Device, RunnableMixin):
-    def __init__(self, bus: I2C, name: str, board: int,
+class Scd41(NodeMixin, Device, RunnableMixin):
+    def __init__(self, bus: I2C, name: str, device_id: int,
                  address: int = 98, env: dict[str, Any] | None = None):
-        super().__init__(bus, name, board,
+        super().__init__(bus, name, device_id,
                          [ constants.TEMPERATURE, constants.RELATIVE_HUMIDITY, constants.CO2 ],
                          address)
         self._dev = adafruit_scd4x.SCD4X(bus, address)
@@ -236,10 +231,10 @@ class Scd41(Device, RunnableMixin):
     def stop(self):
         self._dev.stop_periodic_measurement()
 
-class Tsl2591(Device):
-    def __init__(self, bus: I2C, name: str, board: int,
+class Tsl2591(NodeMixin, Device):
+    def __init__(self, bus: I2C, name: str, device_id: int,
                  address: int = 41, env: dict[str, Any] | None = None):
-        super().__init__(bus, name, board,
+        super().__init__(bus, name, device_id,
                          [ constants.LUX, constants.INFRARED, constants.VISIBLE,
                            constants.FULL_SPECTRUM ],
                          address)
@@ -261,16 +256,16 @@ class DeviceFactory:
     def __init__(self):
         self._ctors = {}
 
-    def register_device(self, board, ctor):
-        self._ctors[board] = ctor
+    def register_device(self, device_id, ctor):
+        self._ctors[device_id] = ctor
 
-    def get_device(self, bus: I2C, name: str, board: int,
+    def get_device(self, bus: I2C, name: str, device_id: int,
                    address: int, env: dict[str, Any] | None = None) -> DeviceInterface:
-        ctor = self._ctors.get(board)
+        ctor = self._ctors.get(device_id)
         if not ctor:
-            raise ValueError(board)
+            raise ValueError(device_id)
 
-        return ctor(bus, name, board, address, env)
+        return ctor(bus, name, device_id, address, env)
 
 device_factory = DeviceFactory()
 device_factory.register_device(constants.BMP390, Bmp390)

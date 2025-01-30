@@ -109,7 +109,7 @@ class _OpenMeteoCurrentGetterImpl(GetterMixin, SchedulableMixin):
             u = current_units[c] if not om_cap.found  else current_units[om_cap.field]
             func(c, v, u)
 
-class _OpenMeteoCurrent(MeterInterface, _OpenMeteoMixin):
+class _OpenMeteoCurrent(_OpenMeteoMixin, MeterInterface):
     def __init__(self, name: str, capability: str, interval: str,
                  params: dict[str, int | str], scheduler):
         self._name = name
@@ -123,7 +123,7 @@ class _OpenMeteoCurrent(MeterInterface, _OpenMeteoMixin):
         return VIRTUAL_ADDR
 
     @property
-    def board(self) -> int:
+    def device_id(self) -> int:
         return VIRTUAL_DEVICE
 
     @property

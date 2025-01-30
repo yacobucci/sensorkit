@@ -68,6 +68,29 @@ device_ids.create_index('id', unique=True)
 device_ids.create_index('device_name', unique=True)
 device_ids.csv_import(device_ids_data, transforms={'id': int})
 
+links = db.Table('links')
+links.create_index('node', unique=True)
+links.create_index('parent')
+
+nodes = db.Table('nodes')
+nodes.create_index('uuid', unique=True)
+nodes.create_index('kind')
+
+multiplexer_attributes = db.Table('multiplexer_attributes')
+multiplexer_attributes.create_index('uuid')
+multiplexer_objects = db.Table('multiplexer_objects')
+multiplexer_objects.create_index('uuid')
+channels = db.Table('channels')
+channels.create_index('uuid')
+device_attributes = db.Table('device_attributes')
+device_attributes.create_index('uuid')
+device_objects = db.Table('device_objects')
+device_objects.create_index('uuid')
+meter_attributes = db.Table('meter_attributes')
+meter_attributes.create_index('uuid')
+meter_objects = db.Table('meter_objects')
+meter_objects.create_index('uuid')
+
 class NonUniqueRecordQuery(Exception):
     """Non Unique Query"""
 

@@ -3,8 +3,18 @@ import logging
 from typing import Any
 import urllib.parse
 import urllib.request
+import uuid
 
 logger = logging.getLogger(__name__)
+
+class NodeMixin():
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._uuid = uuid.uuid4()
+
+    @property
+    def uuid(self) -> uuid.UUID:
+        return self._uuid
 
 class GetterMixin(metaclass=abc.ABCMeta):
     @classmethod

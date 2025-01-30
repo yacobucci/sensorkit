@@ -124,12 +124,12 @@ class DeviceTree:
         for m in self.meters_iter(__filter):
             yield m
 
-    def measurement_by_board_iter(self, measurement: int,
-                                  board: int) -> Iterator[meters.MeterInterface]:
+    def measurement_by_device_id_iter(self, measurement: int,
+                                  device_id: int) -> Iterator[meters.MeterInterface]:
         def __filter(node: Node) -> bool:
             if hasattr(node, 'obj'):
                 obj = node.obj
-                if measurement == obj.measurement and board == obj.board:
+                if measurement == obj.measurement and device_id == obj.device_id:
                     return True
             return False
 
@@ -154,11 +154,11 @@ class DeviceTree:
         for node in PreOrderIter(self._root, __decorate_filter(_filter)):
             yield node.obj
 
-    def devices_by_board_iter(self, board: int) -> Iterator[devices.DeviceInterface]:
+    def devices_by_device_id_iter(self, device_id: int) -> Iterator[devices.DeviceInterface]:
         def __filter(node: Node) -> bool:
             if hasattr(node, 'obj'):
                 obj = node.obj
-                if board == obj.board:
+                if device_id == obj.device_id:
                     return True
             return False
 
@@ -186,21 +186,6 @@ class DeviceTree:
 
     # XXX puke, need to add some logging, but keeping the print template for now
     def add(self, name, obj, typ, **kwargs) -> Node:
-        #print('DEBUG {}'.format(type(obj)))
-        #print('DEBUG {} is a {} {}'.format(type(obj), meters.Meter,
-        #                                   issubclass(type(obj), meters.Meter)))
-        #print('DEBUG {} is a {} {}'.format(type(obj), meters.MeterInterface,
-        #                                   issubclass(type(obj), meters.MeterInterface)))
-        #print('DEBUG {} is a {} {}'.format(type(obj), devices.DeviceInterface,
-        #                                   issubclass(type(obj), devices.DeviceInterface)))
-        #print('DEBUG {} has a {} {}'.format(type(obj), '_device', hasattr(obj, '_device')))
-        #print('DEBUG {} has a {} {}'.format(type(obj), devices.VirtualDevice,
-        #                                    #issubclass(type(obj._device), devices.VirtualDevice)))
-        #                                    isinstance(obj._device, devices.VirtualDevice)))
-        #print('DEBUG {} has a {} {}'.format(type(obj), devices.Bmp390,
-        #                                    #issubclass(type(obj._device), devices.Bmp390)))
-        #                                    isinstance(obj._device, devices.Bmp390)))
-
         if typ & constants.VIRTUAL:
             parent = self._virtual_bus
         else:
@@ -250,6 +235,13 @@ class DeviceTree:
 
             node = Node(address, parent=parent, obj=mux,
                         metadata=Metadata(constants.MUX))
+
+            # XXX RDBMS test building a rdbms node
+            # pretend parent is None
+            datastructures.links.insert({'node': mux.uuid, 'parent': None})
+            datastructures.nodes.insert({'uuid': mux.uuid, 'kind': constants.MUX})
+            datastructures.multiplexer_attributes.insert(mux)
+            datastructures.multiplexer_objects.insert({'uuid': mux.uuid, 'obj': mux})
             
             def channel_bus(channel) -> int:
                 r = 0
@@ -262,6 +254,12 @@ class DeviceTree:
             for channel in mux.channels():
                 chan = Node(channel_bus(channel), parent=node, obj=channel,
                             metadata=Metadata(constants.CHANNEL))
+
+                # XXX RDBMS test building channels
+                datastructures.links.insert({'node': channel.uuid, 'parent': mux.uuid})
+                datastructures.nodes.insert({'uuid': channel.uuid, 'kind': constants.CHANNEL})
+                datastructures.channels.insert(channel)
+
                 addr_set = set()
                 addr_set.add(mux.address)
                 self._build_tree(channel, chan, env, addr_set)
@@ -270,6 +268,11 @@ class DeviceTree:
                                                     address, env)
             node = Node(address, parent=parent, obj=dev,
                         metadata=Metadata(constants.DEVICE))
+
+            datastructures.links.insert({'node': dev.uuid, 'parent': parent.obj.uuid})
+            datastructures.nodes.insert({'uuid': dev.uuid, 'kind': constants.DEVICE})
+            datastructures.device_attributes.insert(dev)
+            datastructures.device_objects.insert({'uuid': dev.uuid, 'obj': dev})
             self._build_leaves(i2c, address, dev, node)
 
     def _build_leaves(self, i2c, address, device, parent):
@@ -280,6 +283,11 @@ class DeviceTree:
                 capstr = datastructures.capabilities_selector('capability', id=cap)
                 leaf = Node(capstr.field, parent=parent, obj=m,
                             metadata=Metadata(constants.METER))
+
+                datastructures.links.insert({'node': m.uuid, 'parent': parent.obj.uuid})
+                datastructures.nodes.insert({'uuid': m.uuid, 'kind': constants.METER})
+                datastructures.meter_attributes.insert(m)
+                datastructures.meter_objects.insert({'uuid': m.uuid, 'obj': m})
             except ValueError as e:
-                logger.warning('name %s, board %s, capability %s - no ctor',
-                               device.name, device.board, capstr.field)
+                logger.warning('name %s, device_id %s, capability %s - no ctor',
+                               device.name, device.device_id, capstr.field)

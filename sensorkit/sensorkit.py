@@ -88,7 +88,7 @@ class SensorKit(RunnableMixin):
         for c in calibrations:
             capc = c.upper()
             for d in self._tree.devices_iter(
-                    lambda n: n.obj.board == deviceids_selector('id', device_name=capc).field):
+                    lambda n: n.obj.device_id == deviceids_selector('id', device_name=capc).field):
                 for conf in calibrations[c]:
                     cobj = Calibration(c, conf, d, self._tree, self._scheduler)
                     self._calibrations.append(cobj)

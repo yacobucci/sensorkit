@@ -25,7 +25,7 @@ class StaticDevice(MeterInterface):
         return VIRTUAL_ADDR
     
     @property
-    def board(self) -> int:
+    def device_id(self) -> int:
         return VIRTUAL_DEVICE
 
     @property
@@ -47,10 +47,6 @@ class StaticDevice(MeterInterface):
     @property
     def units(self) -> str:
         return self._units
-
-    @property
-    def real_device(self):
-        raise NotImplementedError
 
 class StaticBuilder:
     def __init__(self, name: str, capabilities: list[str]):
