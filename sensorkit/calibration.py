@@ -48,7 +48,7 @@ class Calibration(SchedulableInterface):
         if 'meter' in source:
             children = join_devices_meters()
             for meter in children.where(name=source['meter'].upper(), measurement=field.field):
-                self._sources.append(meter.obj)
+                self._sources.append(meter.meter_obj)
 
         elif 'virtual' in source:
             virtuals = join_virtuals()
