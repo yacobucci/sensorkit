@@ -66,6 +66,9 @@ class RunnableInterface(metaclass=abc.ABCMeta):
                 callable(subclass.stop) or
                 NotImplemented)
 
+    def pre_run(self):
+        pass
+
     @abc.abstractmethod
     def run(self):
         raise NotImplementedError
