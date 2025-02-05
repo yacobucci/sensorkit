@@ -1,11 +1,7 @@
 import abc
-from collections.abc import Iterator
 import logging
 import typing
 
-from busio import I2C
-
-from . import datastructures
 from . import devices
 from .constants import *
 from .tools.mixins import NodeMixin
@@ -43,24 +39,24 @@ class MeterInterface(metaclass=abc.ABCMeta):
     def units(self) -> str:
         raise NotImplementedError
 
-    @property
+    @abc.actractmethod
     def address(self) -> int:
         raise NotImplementedError
 
-    @property
+    @abc.actractmethod
     def device_id(self) -> int:
         raise NotImplementedError
 
-    @property
+    @abc.actractmethod
     def name(self) -> str:
         raise NotImplementedError
 
-    @property
+    @abc.actractmethod
     def channel_id(self) -> int:
         raise NotImplementedError
 
 class Meter(NodeMixin, MeterInterface):
-    def __init__(self, device, measurement: int):
+    def __init__(self, device: Device, measurement: int):
         super().__init__()
         self._device = device
         self._measurement = measurement
