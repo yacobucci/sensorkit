@@ -3,10 +3,6 @@ NONE = 0x00
 # Addresses
 VIRTUAL_ADDR = 0xFF
 
-# Interfaces
-ADAFRUIT = 0x0001
-DFROBOT  = 0x0002
-
 # Device Types
 VIRTUAL       = 0x80000000
 
