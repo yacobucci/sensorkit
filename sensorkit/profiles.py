@@ -15,17 +15,16 @@ class DeviceProfile:
     address: int
     device_id: int
     capabilities: list[int]
-    typ: int
-    interface: int = ADAFRUIT
+    kind: int
 
     def is_mux(self) -> bool:
-        return True if self.typ == MUX else False
+        return True if self.kind == MUX else False
 
     def is_meter(self) -> bool:
-        return True if self.typ == METER else False
+        return True if self.kind == METER else False
 
     def is_detector(self) -> bool:
-        return True if self.typ == DETECTOR else False
+        return True if self.kind == DETECTOR else False
 
     def has_capability(self, cap: int) -> bool:
         return True if cap in self.capabilities else False

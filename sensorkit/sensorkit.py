@@ -18,6 +18,65 @@ from .tools.mixins import RunnableInterface, SchedulableInterface
 
 logger = logging.getLogger(__name__)
 
+class SensorParameters(RunnableInterface):
+    def __init__(self, reset_at_exit: bool | None, selectors: dict[str, Any],
+                 parameters: dict[str, dict[str, Any]]):
+        self._reset = reset_at_exit if (reset_at_exit is not None and
+                                        reset_at_exit is True) else False
+        self._selectors = None
+        self._parameters = None
+
+        if selectors is not None:
+            self._selectors = selectors
+            if 'name' in self._selectors:
+                self._selectors['name'] = self._selectors['name'].upper()
+
+            if 'channel_id' in self._selectors:
+                self._selectors['has_channel'] = True
+        else:
+            raise ValueError('selectors cannot be None')
+
+        if parameters is not None:
+            self._parameters = parameters
+
+    @property
+    def selectors(self) -> dict[str, Any]:
+        return self._selectors
+
+    @property
+    def parameter(self) -> dict[str, Any]:
+        return self._parameters
+
+    def pre_run(self):
+        devices = join_devices()
+
+        for device in devices.where(**self._selectors):
+            chan = device.channel_id if device.has_channel is True else '-'
+            logger.info('applying config to device {} {} {}'.format(device.name,
+                                                                    device.address,
+                                                                    chan))
+            dev = device.obj
+            for param in self._parameters:
+                if hasattr(dev.real_device, param['property']):
+                    param['saved_value'] = getattr(dev.real_device, param['property'])
+                    setattr(dev.real_device, param['property'], param['value'])
+
+    def run(self):
+        pass
+
+    def stop(self):
+        devices = join_devices()
+
+        for device in devices.where(**self._selectors):
+            chan = device.channel_id if device.has_channel is True else '-'
+            logger.info('reseting startup config on device {} {} {}'.format(device.name,
+                                                                            device.address,
+                                                                            chan))
+            dev = device.obj
+            for param in self._parameters:
+                if hasattr(dev.real_device, param['property']):
+                    setattr(dev.real_device, param['property'], param['saved_value'])
+
 class SensorKit(RunnableInterface):
     def __init__(self, bus: I2C, config: dict[str, Any], scheduler):
         self._bus = bus
@@ -29,11 +88,15 @@ class SensorKit(RunnableInterface):
         self._tree.build()
         self._scheduler = scheduler
 
-        self._calibrations = []
+        self._listeners = []
 
         self._static_args = {
             'scheduler': self._scheduler,
         }
+
+        for sensor in self._config.sensors:
+            logger.info('preparing sensor config for application {}'.format(sensor))
+            self.register_listener(SensorParameters(**sensor))
 
         self._virtual_devices = self._config.virtual_devices
         for dev in self._virtual_devices:
@@ -51,6 +114,11 @@ class SensorKit(RunnableInterface):
         calibrations = self._config.calibrations
         self._build_calibrations(calibrations)
 
+    def register_listener(self, obj: [RunnableInterface | SchedulableInterface]):
+        if not isinstance(obj, RunnableInterface) and not isinstance(obj, SchedulableInterface):
+            raise ValueError('must be a RunnableInterface or SchedulableInterface')
+        self._listeners.append(obj)
+
     @property
     def tree(self) -> DeviceTree:
         return self._tree
@@ -62,9 +130,13 @@ class SensorKit(RunnableInterface):
         #
         #   Run:
         #     - Runnables
-        for cobj in self._calibrations:
-            if isinstance(cobj, SchedulableInterface):
-                cobj.schedule(True)
+        for obj in self._listeners:
+            if isinstance(obj, SchedulableInterface):
+                obj.schedule(True)
+        for obj in self._listeners:
+            if isinstance(obj, RunnableInterface):
+                obj.pre_run()
+                obj.run()
 
         for node in nodes:
             if node.obj is not None and isinstance(node.obj, RunnableInterface):
@@ -77,9 +149,12 @@ class SensorKit(RunnableInterface):
         #
         #   Run:
         #     - Runnables
-        for cobj in self._calibrations:
-            if isinstance(cobj, SchedulableInterface):
-                cobj.unschedule()
+        for obj in self._listeners:
+            if isinstance(obj, SchedulableInterface):
+                obj.unschedule()
+        for obj in self._listeners:
+            if isinstance(obj, RunnableInterface):
+                obj.stop()
 
         for node in nodes:
             if node.obj is not None and isinstance(node.obj, RunnableInterface):
@@ -90,7 +165,7 @@ class SensorKit(RunnableInterface):
             for d in join_devices().where(name=c.upper()):
                 for conf in calibrations[c]:
                     cobj = Calibration(c, conf, d.obj, self._tree, self._scheduler)
-                    self._calibrations.append(cobj)
+                    self.register_listener(cobj)
 
     def _instantiate_device(self, name: str, config: dict[str, Any]) -> DeviceInterface:
         module = import_module(config['module'], package='sensorkit')

@@ -10,6 +10,7 @@ class Config:
     def __init__(self, config: dict[str, Any]):
         self._data = config
 
+        self._sensors = None
         self._virtual_devices = None
         self._calibrations = None
         self._env = None
@@ -23,7 +24,15 @@ class Config:
         return self._env
 
     @property
-    def virtual_devices(self) -> dict[str, dict[str, str]]:
+    def sensors(self) -> list[Any]:
+        if self._sensors is not None:
+            return self._sensors
+
+        self._sensors = self._data.get('sensors', {})
+        return self._sensors
+
+    @property
+    def virtual_devices(self) -> dict[str, Any]:
         if self._virtual_devices is not None:
             return self._virtual_devices
 

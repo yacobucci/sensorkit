@@ -1,18 +1,40 @@
 sensorkit:
   env:
     indoors: true
+  sensors:
+    - selectors:
+        name: tsl2591
+        address: 0x29
+      reset_at_exit: true
+      parameters:
+        - property: persist
+          value: 5
+        - property: threshold_high
+          value: 20000
+        - property: threshold_low
+          value: 15000
+      #detector:
+      #  interrupt:
+      #    pin: 26
+      #    resistor: up
+      #    edge: falling
+    - selectors:
+        name: scd41
+      settings:
+        - property: altitude
+          value: 1688
   virtual-devices:
-    static-altitude:
-      type: meter
-      module: .virtuals.static
-      builder: StaticBuilder
-      capabilities:
-        - altitude
-      args:
-        values:
-          altitude:
-            value: 1688
-            units: m
+    #static-altitude:
+    #  type: meter
+    #  module: .virtuals.static
+    #  builder: StaticBuilder
+    #  capabilities:
+    #    - altitude
+    #  args:
+    #    values:
+    #      altitude:
+    #        value: 1688
+    #        units: m
     open-meteo-current:
       type: meter
       module: .virtuals.openmeteo
@@ -43,15 +65,15 @@ sensorkit:
           aggregation: average
           interval: PT1M
     scd41:
-      - measurement: altitude
-        target:
-          property: altitude
-          where: real
-        source:
-          virtual: static-altitude
-        policy:
-          aggregation: first
-          interval: oneshot
+      #  - measurement: altitude
+      #  target:
+      #    property: altitude
+      #    where: real
+      #  source:
+      #    virtual: static-altitude
+      #  policy:
+      #    aggregation: first
+      #    interval: oneshot
       - measurement: pressure
         target:
           method: set_ambient_pressure
