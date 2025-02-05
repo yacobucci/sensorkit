@@ -244,7 +244,7 @@ class Tsl2591(NodeMixin, Device):
         self._property_map[constants.INFRARED] = 'infrared'
         self._capability_units[constants.INFRARED] = constants.AMBIENT_LIGHT_UNITS
         self._property_map[constants.VISIBLE] = 'visible'
-        self._capability_units[constants.INFRARED] = constants.AMBIENT_LIGHT_UNITS
+        self._capability_units[constants.VISIBLE] = constants.AMBIENT_LIGHT_UNITS
         self._property_map[constants.FULL_SPECTRUM] = 'full_spectrum'
         self._capability_units[constants.FULL_SPECTRUM] = constants.AMBIENT_LIGHT_UNITS
 
