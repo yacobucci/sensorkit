@@ -19,8 +19,8 @@ from .tools.mixins import RunnableInterface, SchedulableInterface
 logger = logging.getLogger(__name__)
 
 class SensorParameters(RunnableInterface):
-    def __init__(self, reset_at_exit: Optional[bool] = None, selectors: dict[str, Any],
-                 parameters: dict[str, dict[str, Any]]):
+    def __init__(self, selectors: dict[str, Any], parameters: dict[str, dict[str, Any]],
+                 reset_at_exit: Optional[bool] = None):
         self._reset = reset_at_exit if (reset_at_exit is not None and
                                         reset_at_exit is True) else False
         self._selectors = None
