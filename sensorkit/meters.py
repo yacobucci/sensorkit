@@ -56,7 +56,7 @@ class MeterInterface(metaclass=abc.ABCMeta):
         raise NotImplementedError
 
 class Meter(NodeMixin, MeterInterface):
-    def __init__(self, device: Device, measurement: int):
+    def __init__(self, device: devices.Device, measurement: int):
         super().__init__()
         self._device = device
         self._measurement = measurement
