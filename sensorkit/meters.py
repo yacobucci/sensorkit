@@ -47,11 +47,11 @@ class MeterInterface(metaclass=abc.ABCMeta):
     def device_id(self) -> int:
         raise NotImplementedError
 
-    @abc.absctractmethod
+    @abc.abstractmethod
     def name(self) -> str:
         raise NotImplementedError
 
-    @abc.absctractmethod
+    @abc.abstractmethod
     def channel_id(self) -> int:
         raise NotImplementedError
 
