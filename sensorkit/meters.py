@@ -39,19 +39,19 @@ class MeterInterface(metaclass=abc.ABCMeta):
     def units(self) -> str:
         raise NotImplementedError
 
-    @abc.actractmethod
+    @abc.abstractmethod
     def address(self) -> int:
         raise NotImplementedError
 
-    @abc.actractmethod
+    @abc.abstractmethod
     def device_id(self) -> int:
         raise NotImplementedError
 
-    @abc.actractmethod
+    @abc.absctractmethod
     def name(self) -> str:
         raise NotImplementedError
 
-    @abc.actractmethod
+    @abc.absctractmethod
     def channel_id(self) -> int:
         raise NotImplementedError
 
