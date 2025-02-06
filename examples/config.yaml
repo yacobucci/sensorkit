@@ -20,7 +20,7 @@ sensorkit:
       #    edge: falling
     - selectors:
         name: scd41
-      settings:
+      parameters:
         - property: altitude
           value: 1688
   virtual-devices:

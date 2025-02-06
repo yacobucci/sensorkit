@@ -1,6 +1,6 @@
 [project]
 name = "sensorkit"
-version = "0.4.5"
+version = "0.4.6"
 description = "Simple utilities for generically using GPIO/I2C RPI sensors."
 authors = [
     {name = "Matthew Yacobucci", email = "<yacobucci@gmail.com>"},
