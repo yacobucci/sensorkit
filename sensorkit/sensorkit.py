@@ -1,6 +1,6 @@
 from importlib import import_module
 import logging
-from typing import Any
+from typing import Any, Optional
 
 from busio import I2C
 
