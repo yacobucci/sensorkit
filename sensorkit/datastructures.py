@@ -8,16 +8,6 @@ from . import constants
 
 logger = logging.getLogger(__name__)
 
-interfaces_data = f"""\
-id,interface
-{constants.ADAFRUIT},adafruit
-{constants.DFROBOT},dfrobot"""
-
-interfaces = db.Table('interfaces')
-interfaces.create_index('id', unique=True)
-interfaces.create_index('interface', unique=True)
-interfaces.csv_import(interfaces_data, transforms={'id': int})
-
 device_type_data = f"""\
 type,device
 {constants.BUS},bus
@@ -227,7 +217,6 @@ class UniqueRecordFieldByWhere:
                         self._table.table_name, clauses)
                 raise NonUniqueRecordQuery(msg)
 
-interfaces_selector   = UniqueRecordFieldByWhere(interfaces)
 devicetypes_selector  = UniqueRecordFieldByWhere(device_types)
 capabilities_selector = UniqueRecordFieldByWhere(capabilities)
 deviceids_selector    = UniqueRecordFieldByWhere(device_ids)
