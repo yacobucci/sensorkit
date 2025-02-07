@@ -7,6 +7,7 @@ __all__ = [
         'constants',
         'controls',
         'datastructures',
+        'detectors',
         'devices',
         'devicetree',
         'meters',
@@ -20,6 +21,7 @@ from . import config
 from . import constants
 from . import controls
 from . import datastructures
+from . import detectors
 from . import devices
 from . import devicetree
 from . import meters

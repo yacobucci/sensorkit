@@ -78,9 +78,9 @@ class SensorParameters(RunnableInterface):
                     setattr(dev.real_device, param['property'], param['saved_value'])
 
 class SensorKit(RunnableInterface):
-    def __init__(self, bus: I2C, config: dict[str, Any], scheduler):
+    def __init__(self, bus: I2C, config: dict[str, Any] | Config, scheduler):
         self._bus = bus
-        self._config = Config(config)
+        self._config = Config(config) if isinstance(config, dict) else config
 
         self._env = self._config.env
 
