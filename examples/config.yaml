@@ -13,11 +13,6 @@ sensorkit:
           value: 20000
         - property: threshold_low
           value: 15000
-      #detector:
-      #  interrupt:
-      #    pin: 26
-      #    resistor: up
-      #    edge: falling
     - selectors:
         name: scd41
       parameters:

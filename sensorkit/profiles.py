@@ -38,7 +38,8 @@ profiles.insert(DeviceProfile('SHT41', 0x44, SHT41, [ TEMPERATURE, RELATIVE_HUMI
 profiles.insert(DeviceProfile('VEML7700', 0x10, VEML7700, [ AMBIENT_LIGHT, LUX ], METER))
 profiles.insert(DeviceProfile('SCD41', 0x62, SCD41, [ CO2, RELATIVE_HUMIDITY, TEMPERATURE ], METER))
 profiles.insert(DeviceProfile('TSL2591', 0x29, TSL2591,
-                              [ LUX, FULL_SPECTRUM, VISIBLE, INFRARED, AMBIENT_LIGHT ], METER))
+                              [ LUX, FULL_SPECTRUM, VISIBLE, INFRARED, AMBIENT_LIGHT ],
+                              METER | DETECTOR))
 
 profiles.create_index('name')
 profiles.create_index('address')

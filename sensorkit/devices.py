@@ -1,7 +1,7 @@
 import abc
 from collections.abc import Iterator
 import logging
-from typing import Any
+from typing import Any, Optional
 
 import adafruit_bmp3xx
 import adafruit_scd4x
@@ -31,6 +31,8 @@ class DeviceInterface(metaclass=abc.ABCMeta):
                 callable(subclass.device_id) and
                 hasattr(subclass, 'name') and
                 callable(subclass.name) and
+                hasattr(subclass, 'has_channel') and
+                callable(subclass.has_channel) and
                 hasattr(subclass, 'channel_id') and
                 callable(subclass.channel_id) and
                 hasattr(subclass, 'real_device') and
@@ -55,6 +57,10 @@ class DeviceInterface(metaclass=abc.ABCMeta):
 
     @abc.abstractmethod
     def name(self) -> str:
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def has_channel(self) -> bool:
         raise NotImplementedError
 
     @abc.abstractmethod
@@ -83,7 +89,7 @@ class DeviceInterface(metaclass=abc.ABCMeta):
 
 class Device(DeviceInterface):
     def __init__(self, bus: I2C | None, name: str, device_id: int, capabilities: list[int],
-                 address: int, env: dict[str, Any] | None = None):
+                 address: int, env: Optional[dict[str, Any]] = None):
         self._bus = bus
         self._name = name
         self._device_id = device_id
@@ -127,6 +133,12 @@ class Device(DeviceInterface):
     def read_capability(self, capability: int) -> [ int | float ]:
         try:
             prop = self._property_map[capability]
+            chk_field = prop.split(':')
+            if len(chk_field) > 1:
+                prop = chk_field[0]
+                field = int(chk_field[1])
+            else:
+                field = -1
         except KeyError:
             raise DeviceCapabilityError('capability ({}) is unsupported by device ({})'.format(
                 capability, self._device_id))
@@ -135,7 +147,10 @@ class Device(DeviceInterface):
             msg = 'device initialized without real device ({})'.format(self._device_id)
             raise DeviceCapabilityError(msg)
 
-        return getattr(self._dev, prop)
+        v = getattr(self._dev, prop)
+        if field != -1:
+            return v[field]
+        return v
 
     def capability_units(self, capability: int) -> str:
         try:
@@ -147,6 +162,10 @@ class Device(DeviceInterface):
             raise DeviceCapabilityError(msg)
 
     @property
+    def has_channel(self) -> bool:
+        return self._has_channel
+
+    @property
     def channel_id(self) -> [ int | None ]:
         if self._has_channel is True:
             return self._channel_id
@@ -154,7 +173,7 @@ class Device(DeviceInterface):
 
 class Bmp390(NodeMixin, Device):
     def __init__(self, bus: I2C, name: str, device_id: int,
-                 address: int = 119, env: dict[str, Any] | None = None):
+                 address: int = 119, env: Optional[dict[str, Any]] = None):
         super().__init__(bus, name, device_id,
                          [ constants.TEMPERATURE, constants.PRESSURE, constants.ALTITUDE ],
                          address)
@@ -172,7 +191,7 @@ class Bmp390(NodeMixin, Device):
 
 class Sht41(NodeMixin, Device):
     def __init__(self, bus: I2C, name: str, device_id: int,
-                 address: int = 68, env: dict[str, Any] | None = None):
+                 address: int = 68, env: Optional[dict[str, Any]] = None):
         super().__init__(bus, name, device_id,
                          [ constants.RELATIVE_HUMIDITY, constants.TEMPERATURE ],
                          address)
@@ -188,7 +207,7 @@ class Sht41(NodeMixin, Device):
 
 class Veml7700(NodeMixin, Device):
     def __init__(self, bus: I2C, name: str, device_id: int,
-                 address: int = 16, env: dict[str, Any] | None = None):
+                 address: int = 16, env: Optional[dict[str, Any]] = None):
         super().__init__(bus, name, device_id, [ constants.LUX, constants.AMBIENT_LIGHT ], address)
         self._dev = adafruit_veml7700.VEML7700(bus, address)
         self._property_map[constants.LUX] = 'lux'
@@ -202,7 +221,7 @@ class Veml7700(NodeMixin, Device):
 
 class Scd41(NodeMixin, Device, RunnableInterface):
     def __init__(self, bus: I2C, name: str, device_id: int,
-                 address: int = 98, env: dict[str, Any] | None = None):
+                 address: int = 98, env: Optional[dict[str, Any]] = None):
         super().__init__(bus, name, device_id,
                          [ constants.TEMPERATURE, constants.RELATIVE_HUMIDITY, constants.CO2 ],
                          address)
@@ -233,10 +252,10 @@ class Scd41(NodeMixin, Device, RunnableInterface):
 
 class Tsl2591(NodeMixin, Device):
     def __init__(self, bus: I2C, name: str, device_id: int,
-                 address: int = 41, env: dict[str, Any] | None = None):
+                 address: int = 41, env: Optional[dict[str, Any]] = None):
         super().__init__(bus, name, device_id,
                          [ constants.LUX, constants.INFRARED, constants.VISIBLE,
-                           constants.FULL_SPECTRUM ],
+                           constants.FULL_SPECTRUM, constants.AMBIENT_LIGHT ],
                          address)
         self._dev = adafruit_tsl2591.TSL2591(bus, address)
         self._property_map[constants.LUX] = 'lux'
@@ -247,6 +266,8 @@ class Tsl2591(NodeMixin, Device):
         self._capability_units[constants.VISIBLE] = constants.AMBIENT_LIGHT_UNITS
         self._property_map[constants.FULL_SPECTRUM] = 'full_spectrum'
         self._capability_units[constants.FULL_SPECTRUM] = constants.AMBIENT_LIGHT_UNITS
+        self._property_map[constants.AMBIENT_LIGHT] = 'raw_luminosity:0'
+        self._capability_units[constants.AMBIENT_LIGHT] = constants.AMBIENT_LIGHT_UNITS
 
     @property
     def real_device(self):
@@ -260,7 +281,7 @@ class DeviceFactory:
         self._ctors[device_id] = ctor
 
     def get_device(self, bus: I2C, name: str, device_id: int,
-                   address: int, env: dict[str, Any] | None = None) -> DeviceInterface:
+                   address: int, env: Optional[dict[str, Any]] = None) -> DeviceInterface:
         ctor = self._ctors.get(device_id)
         if not ctor:
             raise ValueError(device_id)

@@ -1,6 +1,6 @@
 import logging
 from collections.abc import Iterator
-from typing import Any
+from typing import Any, Optional
 
 import board
 from busio import I2C
@@ -16,7 +16,7 @@ from .tools.mixins import NodeMixin
 logger = logging.getLogger(__name__)
 
 class DeviceTree:
-    def __init__(self, i2c: I2C, env: dict[str, Any] | None = None):
+    def __init__(self, i2c: I2C, env: Optional[dict[str, Any]] = None):
         self._i2c = i2c
         self._env = env
 
@@ -38,6 +38,11 @@ class DeviceTree:
                 datastructures.device_attributes.insert(obj)
             case constants.METER:
                 datastructures.meter_attributes.insert(obj)
+            case constants.DETECTOR:
+                datastructures.detector_attributes.insert(obj)
+            case constants.METER | constants.DETECTOR:
+                datastructures.meter_attributes.insert(obj)
+                datastructures.detector_attributes.insert(obj)
             case _:
                 if bool(kind & (constants.VIRTUAL | constants.METER)):
                     datastructures.virtual_attributes.insert(
@@ -46,7 +51,7 @@ class DeviceTree:
                 else:
                     raise ValueError('unsupported kind {}'.format(kind))
 
-    def _build_tree(self, i2c, parent: NodeMixin | None, env: dict[str, Any] | None = None,
+    def _build_tree(self, i2c, parent: NodeMixin | None, env: Optional[dict[str, Any]] = None,
                     addr_filter: set = set()):
         try:
             if i2c.try_lock():
@@ -78,7 +83,7 @@ class DeviceTree:
                 logger.warning(message)
 
     def _build_node(self, i2c, address, profile, parent: NodeMixin | None,
-                    env: dict[str, Any] | None = None):
+                    env: Optional[dict[str, Any]] = None):
         if profile.is_mux():
             logger.info('multiplexer %s found at addr %s, setting up multiple channels',
                         profile.name, hex(address))
@@ -103,7 +108,6 @@ class DeviceTree:
             self._build_leaves(i2c, dev)
 
     def _build_leaves(self, i2c, parent):
-        # XXX only do this for meters, eventually need to discriminate with detectors
         for cap in parent.capabilities_gen():
             try:
                 m = meters.Meter(parent, cap)

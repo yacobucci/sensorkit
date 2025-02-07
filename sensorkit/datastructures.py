@@ -1,6 +1,6 @@
 from collections import namedtuple
 import logging
-import typing
+from typing import Any, Optional
 
 import littletable as db
 
@@ -79,6 +79,12 @@ device_attributes.create_index('address')
 meter_attributes = db.Table('meter_attributes')
 meter_attributes.create_index('uuid', unique=True)
 meter_attributes.create_index('measurement')
+detector_attributes = db.Table('detector_attributes')
+detector_attributes.create_index('uuid', unique=True)
+detector_attributes.create_index('name')
+detector_attributes.create_index('address')
+detector_attributes.create_index('has_channel')
+detector_attributes.create_index('channel_id')
 virtual_attributes = db.Table('virtual_attributes')
 virtual_attributes.create_index('uuid', unique=True)
 virtual_attributes.create_index('name')
@@ -169,7 +175,7 @@ def join_devices_meters():
                                   node='uuid')('device_meters')
     return children
 
-class NonUniqueRecordQuery(Exception):
+class NonUniqueRecordQueryError(Exception):
     """Non Unique Query"""
 
 Field = namedtuple('Field', 'found field')
@@ -179,7 +185,7 @@ class UniqueRecordByWhere:
     def __init__(self, table: db.Table[db.TableContent]):
         self._table = table
 
-    def __call__(self, where: dict[str, typing.Any] = None, **kwargs) -> Record:
+    def __call__(self, where: Optional[dict[str, Any]] = None, **kwargs: Any) -> Record:
         clauses = dict()
         if where is not None:
             clauses = {**where, **kwargs}
@@ -194,13 +200,14 @@ class UniqueRecordByWhere:
             case _:
                 msg = 'Table {} - clause: {} - returned non unique record'.format(
                         self._table.table_name, clauses)
-                raise NonUniqueRecordQuery(msg)
+                raise NonUniqueRecordQueryError(msg)
 
 class UniqueRecordFieldByWhere:
     def __init__(self, table: db.Table[db.TableContent]):
         self._table = table
 
-    def __call__(self, field: str, where: dict[str, typing.Any] = None, **kwargs) -> Field:
+    def __call__(self, field: str, where: Optional[dict[str, Any]] = None,
+                 **kwargs: Any) -> Field:
         clauses = dict()
         if where is not None:
             clauses = {**where, **kwargs}
@@ -215,7 +222,7 @@ class UniqueRecordFieldByWhere:
             case _:
                 msg = 'Table {} - clause: {} - returned non unique record'.format(
                         self._table.table_name, clauses)
-                raise NonUniqueRecordQuery(msg)
+                raise NonUniqueRecordQueryError(msg)
 
 devicetypes_selector  = UniqueRecordFieldByWhere(device_types)
 capabilities_selector = UniqueRecordFieldByWhere(capabilities)
